@@ -3,7 +3,7 @@ import L from 'leaflet'
 import { Crosshair, Layers, List, LocateFixed, Plus, Timer, Undo2, Wind, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer } from 'react-leaflet'
-import { useToast } from '../components/ui'
+import { Chip, useToast } from '../components/ui'
 import { db, type Boundary, type Facility } from '../db/db'
 import { getSetting, setSetting, useSetting } from '../db/settings'
 import { DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/demoRevier'
@@ -12,6 +12,7 @@ import { fromPos, toPos, type LatLng } from '../lib/geo'
 import { newId } from '../lib/id'
 import { savePhoto } from '../lib/image'
 import { initialCorners, OverlayHandles, PhotoOverlayLayer } from '../map/PhotoOverlay'
+import { rectifyCorners, type HandleMode } from '../lib/overlayTransform'
 import { navigate } from '../lib/router'
 import { fmtDuration, useNow, useRunningHunt } from '../journal/hooks'
 import { FacilityEditor } from '../map/FacilityEditor'
@@ -36,7 +37,7 @@ type Mode =
   | { t: 'place'; type: FacilityType; moveId?: string }
   | { t: 'draw'; kind: 'line' | 'area' | 'boundary'; type?: FacilityType; points: LatLng[]; replaceId?: string }
   /** Revier-Foto ausrichten */
-  | { t: 'overlay'; id: string; corners: LatLng[]; opacity: number }
+  | { t: 'overlay'; id: string; corners: LatLng[]; opacity: number; handleMode: HandleMode }
 
 /** Welches Panel ist unten offen? */
 type Panel =
@@ -227,10 +228,19 @@ export default function MapPage() {
       const corners = initialCorners(map, photo.width, photo.height)
       const id = newId()
       await db.overlays.add({ id, name: 'Revierkarte (Foto)', photoId, corners, opacity: 0.6, visible: true, createdAt: Date.now() })
-      setMode({ t: 'overlay', id, corners, opacity: 0.6 })
+      setMode({ t: 'overlay', id, corners, opacity: 0.6, handleMode: 'scale' })
     } catch (e) {
       toast(`Foto konnte nicht geladen werden: ${(e as Error).message}`, 'error')
     }
+  }
+
+  /** Verzerrtes Foto wieder auf sein echtes Seitenverhältnis bringen */
+  const resetOverlayShape = async () => {
+    if (mode.t !== 'overlay') return
+    const o = overlays.find((x) => x.id === mode.id)
+    const photo = o && (await db.photos.get(o.photoId))
+    if (!photo) return
+    setMode({ ...mode, corners: rectifyCorners(mode.corners, photo.width, photo.height) })
   }
 
   const saveOverlay = async (thenDraw: boolean) => {
@@ -337,7 +347,9 @@ export default function MapPage() {
               <PhotoOverlayLayer key={o.id} overlay={o} />
             ),
           )}
-        {mode.t === 'overlay' && <OverlayHandles corners={mode.corners} onChange={(corners) => setMode({ ...mode, corners })} />}
+        {mode.t === 'overlay' && (
+          <OverlayHandles corners={mode.corners} mode={mode.handleMode} onChange={(corners) => setMode((m) => (m.t === 'overlay' ? { ...m, corners } : m))} />
+        )}
         <BoundaryLayer boundaries={boundaries} interactive={interactive} onSelect={(b: Boundary) => setPanel({ t: 'boundary', id: b.id })} />
         <FacilityLayer
           facilities={facilities}
@@ -378,15 +390,44 @@ export default function MapPage() {
       {/* Revier-Foto ausrichten */}
       {mode.t === 'overlay' && (
         <>
-          <div className="pt-safe absolute inset-x-0 top-0 z-[1100] p-3">
-            <div className="rounded-2xl border border-accent bg-panel/95 p-3 shadow-xl">
+          {/* pointer-events-none: Ecken unter der Leiste bleiben greifbar */}
+          <div className="pt-safe pointer-events-none absolute inset-x-0 top-0 z-[1100] p-3">
+            <div className="rounded-2xl border border-accent bg-panel/85 p-3 shadow-xl">
               <p className="text-base font-semibold">Foto ausrichten</p>
               <p className="text-sm text-ink-dim">
-                Karte grob hinschieben, dann die Ecken 1–4 ziehen, bis Wege und Waldränder passen. ✥ verschiebt das ganze Bild.
+                {mode.handleMode === 'scale'
+                  ? 'Ecke ziehen = Größe ändern (Form bleibt). ✥ verschiebt das ganze Bild.'
+                  : mode.handleMode === 'rotate'
+                    ? 'Ecke ziehen = Größe ändern und drehen (Form bleibt). ✥ verschiebt das Bild.'
+                    : 'Jede Ecke einzeln ziehen – für schräg fotografierte Karten. ✥ verschiebt das Bild.'}
               </p>
             </div>
           </div>
           <div className="absolute inset-x-0 bottom-0 z-[1100] border-t border-line bg-panel p-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              {(
+                [
+                  ['scale', 'Größe'],
+                  ['rotate', 'Größe + Drehen'],
+                  ['free', 'Frei'],
+                ] as [HandleMode, string][]
+              ).map(([m, label]) => (
+                <Chip key={m} active={mode.handleMode === m} onClick={() => setMode({ ...mode, handleMode: m })}>
+                  {label}
+                </Chip>
+              ))}
+              <span className="ml-auto flex gap-3">
+                <button
+                  className="text-sm text-ink-dim underline"
+                  onClick={() => flyToBounds(L.latLngBounds(mode.corners.map((p) => [p.lat, p.lng] as [number, number])), true)}
+                >
+                  Foto einpassen
+                </button>
+                <button className="text-sm text-ink-dim underline" onClick={resetOverlayShape}>
+                  Form zurücksetzen
+                </button>
+              </span>
+            </div>
             <label className="mb-2 flex items-center gap-3">
               <span className="text-sm text-ink-dim">Transparenz</span>
               <input
@@ -499,7 +540,7 @@ export default function MapPage() {
           current={baseLayer}
           onAlign={(o) => {
             setPanel({ t: 'none' })
-            setMode({ t: 'overlay', id: o.id, corners: o.corners, opacity: o.opacity })
+            setMode({ t: 'overlay', id: o.id, corners: o.corners, opacity: o.opacity, handleMode: 'scale' })
             flyToBounds(L.latLngBounds(o.corners.map((p) => [p.lat, p.lng] as [number, number])))
           }}
           onPick={(id) => {

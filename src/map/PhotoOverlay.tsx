@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Marker, useMap } from 'react-leaflet'
 import { db, type MapOverlay } from '../db/db'
 import { cssMatrix3d } from '../lib/homography'
+import { centerOf, dragCorner, type HandleMode } from '../lib/overlayTransform'
 import type { LatLng } from '../lib/geo'
 import { usePhotoUrl } from './FacilityEditor'
 
@@ -104,14 +105,23 @@ const ICONS = ['1', '2', '3', '4'].map(handleIcon)
 const MOVE_ICON = handleIcon('✥')
 
 /** 4 große Eck-Griffe + Griff in der Mitte zum Verschieben */
-export function OverlayHandles({ corners, onChange }: { corners: LatLng[]; onChange: (c: LatLng[]) => void }) {
-  const center = useMemo(
-    () => ({ lat: corners.reduce((a, p) => a + p.lat, 0) / 4, lng: corners.reduce((a, p) => a + p.lng, 0) / 4 }),
-    [corners],
-  )
+export function OverlayHandles({
+  corners,
+  mode,
+  onChange,
+}: {
+  corners: LatLng[]
+  /** Wie wirkt das Ziehen an einer Ecke? (Standard: nur Größe, keine Verzerrung) */
+  mode: HandleMode
+  onChange: (c: LatLng[]) => void
+}) {
+  const center = useMemo(() => centerOf(corners), [corners])
   const ref = useRef(corners)
   ref.current = corners
+  // Lage zu Beginn des Ziehens – alle Berechnungen gehen davon aus (kein Aufschaukeln)
   const dragStart = useRef<{ center: LatLng; corners: LatLng[] } | null>(null)
+  const begin = () => (dragStart.current = { center: centerOf(ref.current), corners: ref.current })
+  const end = () => (dragStart.current = null)
 
   return (
     <>
@@ -122,11 +132,17 @@ export function OverlayHandles({ corners, onChange }: { corners: LatLng[]; onCha
           icon={ICONS[i]}
           draggable
           eventHandlers={{
+            dragstart: begin,
             drag: (e) => {
+              const s = dragStart.current
+              if (!s) return
               const ll = (e.target as L.Marker).getLatLng()
-              const next = [...ref.current]
-              next[i] = { lat: ll.lat, lng: ll.lng }
-              onChange(next)
+              onChange(dragCorner(s.corners, i, { lat: ll.lat, lng: ll.lng }, mode))
+            },
+            dragend: (e) => {
+              end()
+              // Griff auf die berechnete Ecke zurücksetzen (bei "Größe" liegt sie auf der Diagonale)
+              ;(e.target as L.Marker).setLatLng([ref.current[i].lat, ref.current[i].lng])
             },
           }}
         />
@@ -136,7 +152,7 @@ export function OverlayHandles({ corners, onChange }: { corners: LatLng[]; onCha
         icon={MOVE_ICON}
         draggable
         eventHandlers={{
-          dragstart: () => (dragStart.current = { center, corners: ref.current }),
+          dragstart: begin,
           drag: (e) => {
             const s = dragStart.current
             if (!s) return
@@ -145,21 +161,25 @@ export function OverlayHandles({ corners, onChange }: { corners: LatLng[]; onCha
             const dLng = ll.lng - s.center.lng
             onChange(s.corners.map((p) => ({ lat: p.lat + dLat, lng: p.lng + dLng })))
           },
-          dragend: () => (dragStart.current = null),
+          dragend: end,
         }}
       />
     </>
   )
 }
 
-/** Anfangslage: Bild mittig in den sichtbaren Kartenausschnitt (60 % Größe, Seitenverhältnis bleibt) */
-export function initialCorners(map: L.Map, imgW: number, imgH: number): LatLng[] {
+/**
+ * Anfangslage: Bild in den freien Bereich zwischen oberer Hinweisleiste und
+ * unterem Bedienfeld legen (Seitenverhältnis bleibt).
+ */
+export function initialCorners(map: L.Map, imgW: number, imgH: number, topPad = 130, bottomPad = 260): LatLng[] {
   const size = map.getSize()
-  const scale = Math.min((size.x * 0.6) / imgW, (size.y * 0.45) / imgH)
+  const free = Math.max(120, size.y - topPad - bottomPad)
+  const scale = Math.min((size.x * 0.7) / imgW, (free * 0.8) / imgH)
   const w = imgW * scale
   const h = imgH * scale
   const cx = size.x / 2
-  const cy = size.y * 0.35 // etwas nach oben, unten ist das Panel
+  const cy = topPad + free / 2
   const pts = [
     [cx - w / 2, cy - h / 2],
     [cx + w / 2, cy - h / 2],

@@ -105,7 +105,10 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - Jagdjahr beginnt am 1. April.
 - EXIF-Zeit ohne Zeitzone = Berliner Ortszeit; OffsetTimeOriginal wird beachtet.
 - Wildkamera-Serien (gleiche Wildart, ≤ 2 min) → eine Sichtung, Anzahl = Maximum (nicht Summe).
-- Revier-Foto bleibt auf dem Gerät; Ausrichten per 4 Eckgriffen (perspektivisch), keine automatische Linienerkennung.
+- Revier-Foto bleibt auf dem Gerät; keine automatische Linienerkennung. Eckgriffe mit 3 Modi
+  (`src/lib/overlayTransform.ts`): „Größe“ (Standard, nur skalieren), „Größe + Drehen“ (Form bleibt),
+  „Frei“ (perspektivisch). „Form zurücksetzen“ = Rechteck im Bild-Seitenverhältnis. „Foto einpassen“ zoomt auf alle Ecken.
+  Hinweisleiste oben ist `pointer-events-none`, damit Ecken darunter greifbar bleiben.
 - Wildart nur löschbar, wenn nirgends verwendet.
 - Demo-Sichtungen mit erfundenem Wetter (`source: 'demo'`, `src/demo/demoSightings.ts`, Zufall mit festem Startwert).
 - Offline-Kacheln (Phase 5): nur Esri/OSM/Topo, Google nie. OSM-Nutzungsregeln beachten (keine großen Downloads ab Zoom 17).
