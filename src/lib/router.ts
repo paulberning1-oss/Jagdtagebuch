@@ -1,24 +1,35 @@
 import { useEffect, useState } from 'react'
 
 // Einfaches Routing über den #-Teil der Adresse – funktioniert auch auf GitHub Pages.
+// Beispiele: #/karte, #/tagebuch, #/tagebuch/<id>, #/tagebuch/<id>/bearbeiten
 export type Route = 'karte' | 'sichtungen' | 'tagebuch' | 'assistent' | 'mehr'
 const ROUTES: Route[] = ['karte', 'sichtungen', 'tagebuch', 'assistent', 'mehr']
 
-function parse(): Route {
-  const r = window.location.hash.replace(/^#\/?/, '').split('/')[0] as Route
-  return ROUTES.includes(r) ? r : 'karte'
+export interface Location {
+  route: Route
+  /** Weitere Pfadteile nach der Route */
+  parts: string[]
 }
 
-export function useRoute(): Route {
-  const [route, setRoute] = useState<Route>(parse)
+function parse(): Location {
+  const [r, ...parts] = window.location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
+  return ROUTES.includes(r as Route) ? { route: r as Route, parts } : { route: 'karte', parts: [] }
+}
+
+export function useLocation(): Location {
+  const [loc, setLoc] = useState<Location>(parse)
   useEffect(() => {
-    const on = () => setRoute(parse())
+    const on = () => setLoc(parse())
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
   }, [])
-  return route
+  return loc
 }
 
-export const navigate = (r: Route) => {
-  window.location.hash = `/${r}`
+export function useRoute(): Route {
+  return useLocation().route
+}
+
+export const navigate = (r: Route, ...parts: string[]) => {
+  window.location.hash = `/${[r, ...parts].join('/')}`
 }

@@ -107,7 +107,9 @@ export async function loadDemoData() {
 
 /** Löscht ALLE Testdaten – eigene Einträge bleiben unberührt */
 export async function clearDemoData() {
-  await db.transaction('rw', db.facilities, db.boundaries, db.photos, async () => {
+  await db.transaction('rw', [db.facilities, db.boundaries, db.photos, db.hunts, db.sightings], async () => {
+    await db.hunts.filter((x) => !!x.demo).delete()
+    await db.sightings.filter((x) => !!x.demo).delete()
     await db.facilities.filter((x) => !!x.demo).delete()
     await db.boundaries.filter((x) => !!x.demo).delete()
     await db.photos.filter((x) => !!x.demo).delete()

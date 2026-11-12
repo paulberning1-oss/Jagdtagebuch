@@ -3,6 +3,8 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { LineString, MultiPolygon, Point, Polygon } from 'geojson'
 import type { FacilityType } from '../domain/facilityTypes'
+import type { Hunt, Sighting } from '../domain/hunt'
+import { DEFAULT_SPECIES, type Species } from '../domain/species'
 
 export interface Facility {
   id: string
@@ -50,6 +52,9 @@ export class AnsitzDB extends Dexie {
   boundaries!: EntityTable<Boundary, 'id'>
   photos!: EntityTable<Photo, 'id'>
   settings!: EntityTable<Setting, 'key'>
+  hunts!: EntityTable<Hunt, 'id'>
+  sightings!: EntityTable<Sighting, 'id'>
+  species!: EntityTable<Species, 'id'>
 
   constructor() {
     super('ansitzplaner')
@@ -59,6 +64,18 @@ export class AnsitzDB extends Dexie {
       boundaries: 'id',
       photos: 'id',
       settings: 'key',
+    })
+    // Phase 2: Ansitz-Tagebuch, Sichtungen, Wildarten
+    this.version(2)
+      .stores({
+        hunts: 'id, start, standId, status',
+        sightings: 'id, huntId, time, speciesId',
+        species: 'id, order',
+      })
+      .upgrade((tx) => tx.table('species').bulkPut(DEFAULT_SPECIES))
+    // Ganz neue Datenbank: Startliste der Wildarten anlegen
+    this.on('populate', (tx) => {
+      tx.table('species').bulkAdd(DEFAULT_SPECIES)
     })
   }
 }

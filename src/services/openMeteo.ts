@@ -32,6 +32,17 @@ export async function fetchHourly(
   endDate: string,
   variables: string[],
 ): Promise<HourlySeries> {
+  return (await fetchHourlyWithSource(lat, lng, startDate, endDate, variables)).series
+}
+
+/** Wie fetchHourly, nennt zusätzlich die genutzte Quelle (Vorhersage oder Archiv) */
+export async function fetchHourlyWithSource(
+  lat: number,
+  lng: number,
+  startDate: string,
+  endDate: string,
+  variables: string[],
+): Promise<{ series: HourlySeries; source: 'forecast' | 'archive' }> {
   const now = Date.now()
   const start = new Date(startDate + 'T12:00:00Z').getTime()
   const end = new Date(endDate + 'T12:00:00Z').getTime()
@@ -66,7 +77,7 @@ export async function fetchHourly(
   }
   const json = await res.json()
   if (!json.hourly?.time) throw new WeatherError('Unerwartete Antwort vom Wetterdienst.')
-  return json.hourly as HourlySeries
+  return { series: json.hourly as HourlySeries, source: useArchive ? 'archive' : 'forecast' }
 }
 
 /** Index der Stunde, in die der Zeitpunkt fällt */

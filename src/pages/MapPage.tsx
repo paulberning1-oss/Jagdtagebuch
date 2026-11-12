@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import L from 'leaflet'
-import { Crosshair, Layers, List, LocateFixed, Plus, Undo2, Wind, X } from 'lucide-react'
+import { Crosshair, Layers, List, LocateFixed, Plus, Timer, Undo2, Wind, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer } from 'react-leaflet'
 import { useToast } from '../components/ui'
@@ -10,6 +10,8 @@ import { DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/demoRevier'
 import { typeInfo, type FacilityType } from '../domain/facilityTypes'
 import { fromPos, toPos, type LatLng } from '../lib/geo'
 import { newId } from '../lib/id'
+import { navigate } from '../lib/router'
+import { fmtDuration, useNow, useRunningHunt } from '../journal/hooks'
 import { FacilityEditor } from '../map/FacilityEditor'
 import {
   BaseLayer,
@@ -375,6 +377,9 @@ export default function MapPage() {
         </div>
       )}
 
+      {/* Laufender Ansitz */}
+      {mode.t === 'view' && <RunningHuntPill />}
+
       {/* Willkommen bei leerer Karte */}
       {isEmpty && mode.t === 'view' && panel.t === 'none' && (
         <div className="absolute inset-x-3 top-1/4 z-[950] mx-auto max-w-md rounded-2xl border border-line bg-panel/95 p-5 shadow-2xl">
@@ -465,6 +470,26 @@ export default function MapPage() {
           onClose={() => setPanel({ t: 'none' })}
         />
       )}
+    </div>
+  )
+}
+
+/** Kleine Leiste oben links, solange ein Ansitz läuft – Tipp öffnet das Tagebuch */
+function RunningHuntPill() {
+  const running = useRunningHunt()
+  const now = useNow(30000)
+  if (!running) return null
+  return (
+    <div className="pt-safe absolute left-3 top-3 z-[900] max-w-[calc(100%-6rem)]">
+      <button
+        className="flex min-h-14 items-center gap-2 rounded-full border-2 border-accent bg-panel/95 px-4 text-left shadow-xl"
+        onClick={() => navigate('tagebuch')}
+      >
+        <Timer className="shrink-0 text-accent" />
+        <span className="truncate font-semibold">
+          {running.standName} · {fmtDuration(now - running.start)}
+        </span>
+      </button>
     </div>
   )
 }

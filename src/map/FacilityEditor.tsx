@@ -1,11 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Camera, Move, PenLine, Trash2, Wind } from 'lucide-react'
+import { Camera, Move, PenLine, Play, Trash2, Wind } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Field, Sheet, useToast } from '../components/ui'
 import { db, type Facility } from '../db/db'
 import { typeInfo, typesOfKind, type FacilityType } from '../domain/facilityTypes'
 import { COMPASS_8, compass16, fromPos, lineLength, polygonArea } from '../lib/geo'
 import { savePhoto } from '../lib/image'
+import { navigate } from '../lib/router'
+import { useRunningHunt } from '../journal/hooks'
+import { startHunt } from '../journal/huntActions'
 
 export function FacilityEditor({
   id,
@@ -23,6 +26,7 @@ export function FacilityEditor({
   const stored = useLiveQuery(() => db.facilities.get(id), [id])
   const [draft, setDraft] = useState<Facility | null>(null)
   const toast = useToast()
+  const running = useRunningHunt()
 
   // Entwurf aus der Datenbank übernehmen. Danach nur noch die Geometrie
   // nachziehen (z. B. nach "Position verschieben"), damit beim Tippen nichts springt.
@@ -94,9 +98,27 @@ export function FacilityEditor({
     >
       {draft.demo && <p className="mb-3 text-sm text-hint">Teil des fiktiven Beispielreviers</p>}
       {info.isStand && (
-        <button className="btn btn-primary mb-4 w-full" onClick={() => onWind(draft)}>
-          <Wind /> Wind & Witterung prüfen
-        </button>
+        <div className="mb-4 grid grid-cols-1 gap-2">
+          <button className="btn btn-primary w-full" onClick={() => onWind(draft)}>
+            <Wind /> Wind & Witterung prüfen
+          </button>
+          {!running && (
+            <button
+              className="btn w-full"
+              onClick={async () => {
+                try {
+                  await startHunt({ stand: draft })
+                  toast('Ansitz gestartet – Waidmannsheil!', 'success')
+                  navigate('tagebuch')
+                } catch (e) {
+                  toast((e as Error).message, 'error')
+                }
+              }}
+            >
+              <Play /> Ansitz hier starten
+            </button>
+          )}
+        </div>
       )}
       <Field label="Name">
         <input className="input" value={draft.name} onChange={(e) => update({ name: e.target.value })} placeholder={info.label} />

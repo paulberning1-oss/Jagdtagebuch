@@ -14,7 +14,7 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 ## Phasen
 - [x] Phase 0: Grundgerüst, CLAUDE.md, GitHub-Pages-Workflow
 - [x] Phase 1: Revierkarte, Reviereinrichtungen, Witterungskegel
-- [ ] Phase 2: Ansitz-Tagebuch mit Wetter/Sonne/Mond (Open-Meteo + SunCalc), Offline-Warteschlange
+- [x] Phase 2: Ansitz-Tagebuch mit Wetter/Sonne/Mond (Open-Meteo + SunCalc), Offline-Warteschlange
 - [ ] Phase 3: Wildsichtungen, Wildkamera-Import (EXIF), Filter/Heatmap
 - [ ] Phase 4: Kombinations-Assistent, Regelwerk, Statistik, ~40 Test-Ansitze
 - [ ] Phase 5: PWA/Offline, Kachel-Vorabspeicherung, JSON-Export/-Import, Jagdzeiten, Feinschliff
@@ -53,7 +53,13 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
   - `src/map/MapLayers.tsx`: Ebenen (Grundkarte, Einrichtungen, Grenze, Zeichen-Entwurf, Kegel, Standort)
 - **Daten:** Dexie 4 (IndexedDB), `src/db/db.ts`. Geometrien als GeoJSON (`[lng, lat]`!).
   Schema-Versionen nur ergänzen, nie ändern. Einstellungen als Key/Value in `settings` (`src/db/settings.ts`).
-- **Fachlogik ohne UI** in `src/domain/` (z. B. `scent.ts` Witterungskegel) – mit Vitest getestet.
+- **Fachlogik ohne UI** in `src/domain/` – mit Vitest getestet:
+  `scent.ts` (Witterungskegel), `environment.ts` (Wetter aus Stundenwerten, Sonne, Mond, Kalender),
+  `hunt.ts` (Typen Ansitz/Sichtung/Bedingungen), `species.ts` (Startliste Wildarten, Verhalten)
+- **Tagebuch:** `src/journal/` (`huntActions.ts` = Starten/Beenden/Nachtragen, `HuntForm`, `HuntDetail`,
+  `SightingEditor`, `StartHuntSheet`), Seite `src/pages/JournalPage.tsx`. Routen `#/tagebuch/<id>[/bearbeiten]`.
+- **Wetter-Warteschlange:** `src/services/weatherSync.ts` (App-Start, `online`, alle 5 min; max. 5 Auto-Versuche)
+- **Kartenauswahl:** `src/map/MapPicker.tsx` (Vollbild, für Sichtungs-/Erlegungsort)
 - **Hilfen:** `src/lib/geo.ts` (ebene Näherung in Metern um Bezugspunkt), `src/lib/time.ts` (Europe/Berlin), `src/lib/sun.ts`
 - **Wetter:** `src/services/openMeteo.ts` – Forecast-API (≈3 Monate zurück, 15 Tage voraus), sonst Archiv-API.
 - **Routing:** Hash-Routing (`#/karte`, …) in `src/lib/router.ts` – funktioniert auf GitHub Pages.
@@ -76,6 +82,15 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
   n = Zahl ähnlicher Ansitze. Keine ML-Bibliothek, nachvollziehbare Statistik.
 - Startregeln im Regelwerk sind als „Vorschlag, bitte prüfen“ markiert.
 - Jagd-/Schonzeiten pflegt der Nutzer selbst (keine fest einprogrammierten Rechtsdaten).
+- DB-Schema v2: Tabellen `hunts`, `sightings`, `species`. Wildarten per `upgrade()` und `on('populate')`.
+- Ansitz wird sofort lokal gespeichert; Sonne/Mond/Kalender lokal (SunCalc), nur Wetter braucht Internet
+  (`weatherStatus` pending/ok/error). Zeit-/Ortsänderung → Bedingungen neu.
+- Wetter: Werte zur Startstunde; Wind zusätzlich als Kreismittel über den Ansitz; Böen = Maximum;
+  Drucktendenz aus Δ3 h (±1 hPa Schwelle) und Δ12 h; Niederschlag Open-Meteo = Summe der Vorstunde.
+- Tageszeit: Morgen = Sonnenaufgang −2 h … +3 h, Abend = Sonnenuntergang −3 h … +2 h.
+- Mondauf-/-untergang: SunCalc rechnet in UTC-Tagen → beide überlappenden UTC-Tage abfragen.
+- Ansitze an Demo-Sitzen erben `demo: true` (werden mit den Testdaten gelöscht).
+- Dezimalfelder als `type="text" inputMode="decimal"` (`DecimalInput`), da iOS bei `type="number"` das Komma verschluckt.
 - Offline-Kacheln (Phase 5): nur Esri/OSM/Topo, Google nie. OSM-Nutzungsregeln beachten (keine großen Downloads ab Zoom 17).
 
 ## Repository & Veröffentlichung

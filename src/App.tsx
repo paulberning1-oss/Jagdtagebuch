@@ -1,7 +1,9 @@
 import { BookOpen, Compass, Map as MapIcon, Menu, Telescope } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { ToastProvider } from './components/ui'
-import { navigate, useRoute, type Route } from './lib/router'
+import { navigate, useLocation, type Route } from './lib/router'
+import JournalPage from './pages/JournalPage'
+import { startWeatherSync } from './services/weatherSync'
 import MapPage from './pages/MapPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 import SettingsPage from './pages/SettingsPage'
@@ -15,7 +17,9 @@ const NAV: { route: Route; label: string; icon: ReactNode }[] = [
 ]
 
 export default function App() {
-  const route = useRoute()
+  const { route, parts } = useLocation()
+  // Wetterdaten offener Ansitze nachladen, sobald Internet da ist
+  useEffect(() => startWeatherSync(), [])
   return (
     <ToastProvider>
       <div className="flex h-dvh flex-col">
@@ -26,11 +30,7 @@ export default function App() {
               Sichtungen per Tipp auf die Karte, Wildkamera-Import mit EXIF-Zeit, Filter und Heatmap.
             </PlaceholderPage>
           )}
-          {route === 'tagebuch' && (
-            <PlaceholderPage title="Ansitz-Tagebuch" phase={2}>
-              Ansitz starten/beenden, Abfrage-Formular und automatische Wetter-, Sonnen- und Monddaten.
-            </PlaceholderPage>
-          )}
+          {route === 'tagebuch' && <JournalPage parts={parts} />}
           {route === 'assistent' && (
             <PlaceholderPage title="Kombinations-Assistent" phase={4}>
               Bewertung jedes Sitzes mit 0–100 Punkten aus Regelwerk und deinem Tagebuch – mit Begründung.
