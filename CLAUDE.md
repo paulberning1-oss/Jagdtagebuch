@@ -78,6 +78,10 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - Jagd-/Schonzeiten pflegt der Nutzer selbst (keine fest einprogrammierten Rechtsdaten).
 - Offline-Kacheln (Phase 5): nur Esri/OSM/Topo, Google nie. OSM-Nutzungsregeln beachten (keine großen Downloads ab Zoom 17).
 
+## Repository & Veröffentlichung
+- GitHub: `paulberning1-oss/Jagdtagebuch` (Branch `main`)
+- GitHub Pages: https://paulberning1-oss.github.io/Jagdtagebuch/ (Workflow `.github/workflows/deploy.yml`)
+
 ## Befehle
 - `npm run dev` – Entwicklungsserver (http://localhost:5173)
 - `npm run dev:handy` – mit HTTPS im WLAN (für iPhone-Test mit Standort)

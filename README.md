@@ -9,8 +9,8 @@ auf deinem Gerät.
 Einmalig: [Node.js](https://nodejs.org) (Version 22 oder neuer) installieren.
 
 ```bash
-git clone https://github.com/<dein-name>/ansitzplaner.git
-cd ansitzplaner
+git clone https://github.com/paulberning1-oss/Jagdtagebuch.git
+cd Jagdtagebuch
 npm install
 npm run dev
 ```
@@ -33,10 +33,10 @@ Diese Adresse in Safari auf dem iPhone öffnen. Safari warnt vor dem Zertifikat
 
 ## Veröffentlichen mit GitHub Pages (für die Nutzung im Revier)
 
-1. Code auf GitHub pushen (Branch `main`).
+1. Code liegt auf GitHub: https://github.com/paulberning1-oss/Jagdtagebuch (Branch `main`).
 2. Auf GitHub: **Settings → Pages → Source: „GitHub Actions“** auswählen.
 3. Nach jedem Push baut GitHub die App automatisch (Reiter **Actions**).
-   Die Adresse lautet `https://<dein-name>.github.io/ansitzplaner/`.
+   Die Adresse lautet **https://paulberning1-oss.github.io/Jagdtagebuch/**
 
 Auf GitHub liegt nur der Programmcode – deine Revierdaten bleiben im Browser
 deines Handys.
@@ -48,7 +48,7 @@ deines Handys.
    ein monatliches Freikontingent).
 2. Unter **APIs & Dienste → Anmeldedaten** einen API-Schlüssel erstellen.
 3. **Schlüssel einschränken** (wichtig!):
-   - Anwendungseinschränkung: **Websites** → `https://<dein-name>.github.io/*`
+   - Anwendungseinschränkung: **Websites** → `https://paulberning1-oss.github.io/*`
      sowie `http://localhost:5173/*` eintragen
    - API-Einschränkung: nur **Map Tiles API**
 4. Lokal: Datei `.env.example` nach `.env` kopieren und den Schlüssel eintragen.
