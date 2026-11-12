@@ -83,8 +83,11 @@ export interface Sighting {
   cameraId?: string | null
   notes: string
   photoIds: string[]
-  /** Bedingungen (bei Sichtungen außerhalb eines Ansitzes, Phase 3) */
+  /** Bedingungen – nur bei Sichtungen außerhalb eines Ansitzes (sonst gelten die des Ansitzes) */
   env?: HuntEnv | null
+  weatherStatus?: WeatherStatus
+  weatherError?: string
+  weatherTries?: number
   demo?: boolean
   createdAt: number
 }
@@ -121,7 +124,8 @@ export interface WeatherEnv {
   /** Schneehöhe in cm (nur > 0) */
   snowDepthCm: number | null
   weatherCode: number | null
-  source: 'forecast' | 'archive'
+  /** 'demo' = erfundene Werte der Testdaten */
+  source: 'forecast' | 'archive' | 'demo'
   fetchedAt: number
 }
 

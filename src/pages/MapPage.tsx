@@ -10,6 +10,8 @@ import { DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/demoRevier'
 import { typeInfo, type FacilityType } from '../domain/facilityTypes'
 import { fromPos, toPos, type LatLng } from '../lib/geo'
 import { newId } from '../lib/id'
+import { savePhoto } from '../lib/image'
+import { initialCorners, OverlayHandles, PhotoOverlayLayer } from '../map/PhotoOverlay'
 import { navigate } from '../lib/router'
 import { fmtDuration, useNow, useRunningHunt } from '../journal/hooks'
 import { FacilityEditor } from '../map/FacilityEditor'
@@ -22,6 +24,7 @@ import {
   FlyTo,
   LocationLayer,
   MapClicks,
+  MapRef,
 } from '../map/MapLayers'
 import { AddMenu, BoundarySheet, defaultName, FacilityList, LayerMenu, type AddChoice } from '../map/Menus'
 import { FALLBACK_PROVIDER } from '../map/providers'
@@ -32,6 +35,8 @@ type Mode =
   | { t: 'view' }
   | { t: 'place'; type: FacilityType; moveId?: string }
   | { t: 'draw'; kind: 'line' | 'area' | 'boundary'; type?: FacilityType; points: LatLng[]; replaceId?: string }
+  /** Revier-Foto ausrichten */
+  | { t: 'overlay'; id: string; corners: LatLng[]; opacity: number }
 
 /** Welches Panel ist unten offen? */
 type Panel =
@@ -50,6 +55,8 @@ const GERMANY = { lat: 51.2, lng: 10.4, zoom: 6 }
 export default function MapPage() {
   const facilities = useLiveQuery(() => db.facilities.toArray(), [])
   const boundaries = useLiveQuery(() => db.boundaries.toArray(), [])
+  const overlays = useLiveQuery(() => db.overlays.toArray(), []) ?? []
+  const mapRef = useRef<L.Map | null>(null)
   const baseLayer = useSetting('baseLayer')
   const toast = useToast()
 
@@ -207,6 +214,37 @@ export default function MapPage() {
     setMode({ t: 'view' })
   }
 
+  // ---------- Revierkarte aus Foto ----------
+  const startPhotoOverlay = async (file: File) => {
+    setPanel({ t: 'none' })
+    const map = mapRef.current
+    if (!map) return
+    try {
+      toast('Foto wird vorbereitet…')
+      const photoId = await savePhoto(file, false, 2400)
+      const photo = await db.photos.get(photoId)
+      if (!photo) return
+      const corners = initialCorners(map, photo.width, photo.height)
+      const id = newId()
+      await db.overlays.add({ id, name: 'Revierkarte (Foto)', photoId, corners, opacity: 0.6, visible: true, createdAt: Date.now() })
+      setMode({ t: 'overlay', id, corners, opacity: 0.6 })
+    } catch (e) {
+      toast(`Foto konnte nicht geladen werden: ${(e as Error).message}`, 'error')
+    }
+  }
+
+  const saveOverlay = async (thenDraw: boolean) => {
+    if (mode.t !== 'overlay') return
+    await db.overlays.update(mode.id, { corners: mode.corners, opacity: mode.opacity, visible: true })
+    if (thenDraw) {
+      setMode({ t: 'draw', kind: 'boundary', points: [] })
+      toast('Tippe jetzt die Grenzpunkte auf dem Foto nach')
+    } else {
+      setMode({ t: 'view' })
+      toast('Revierkarte gespeichert – ein-/ausblenden über „Kartenebene“', 'success')
+    }
+  }
+
   const startAdd = (c: AddChoice) => {
     setPanel({ t: 'none' })
     if (c.t === 'point') setMode({ t: 'place', type: c.type })
@@ -289,6 +327,17 @@ export default function MapPage() {
         <BaseLayer providerId={baseLayer} onUnavailable={onLayerUnavailable} />
         <MapClicks onClick={onMapClick} onMoveEnd={saveView} onZoom={setZoom} />
         <FlyTo target={fly} />
+        <MapRef mapRef={mapRef} />
+        {overlays
+          .filter((o) => o.visible || (mode.t === 'overlay' && mode.id === o.id))
+          .map((o) =>
+            mode.t === 'overlay' && mode.id === o.id ? (
+              <PhotoOverlayLayer key={o.id} overlay={{ ...o, opacity: mode.opacity }} corners={mode.corners} />
+            ) : (
+              <PhotoOverlayLayer key={o.id} overlay={o} />
+            ),
+          )}
+        {mode.t === 'overlay' && <OverlayHandles corners={mode.corners} onChange={(corners) => setMode({ ...mode, corners })} />}
         <BoundaryLayer boundaries={boundaries} interactive={interactive} onSelect={(b: Boundary) => setPanel({ t: 'boundary', id: b.id })} />
         <FacilityLayer
           facilities={facilities}
@@ -324,6 +373,45 @@ export default function MapPage() {
             </button>
           )}
         </div>
+      )}
+
+      {/* Revier-Foto ausrichten */}
+      {mode.t === 'overlay' && (
+        <>
+          <div className="pt-safe absolute inset-x-0 top-0 z-[1100] p-3">
+            <div className="rounded-2xl border border-accent bg-panel/95 p-3 shadow-xl">
+              <p className="text-base font-semibold">Foto ausrichten</p>
+              <p className="text-sm text-ink-dim">
+                Karte grob hinschieben, dann die Ecken 1–4 ziehen, bis Wege und Waldränder passen. ✥ verschiebt das ganze Bild.
+              </p>
+            </div>
+          </div>
+          <div className="absolute inset-x-0 bottom-0 z-[1100] border-t border-line bg-panel p-3">
+            <label className="mb-2 flex items-center gap-3">
+              <span className="text-sm text-ink-dim">Transparenz</span>
+              <input
+                type="range"
+                className="h-10 flex-1 accent-[#d4a72c]"
+                min={0.15}
+                max={1}
+                step={0.05}
+                value={mode.opacity}
+                onChange={(e) => setMode({ ...mode, opacity: Number(e.target.value) })}
+              />
+            </label>
+            <div className="grid grid-cols-[auto_1fr_1fr] gap-2">
+              <button className="btn" onClick={() => setMode({ t: 'view' })} aria-label="Abbrechen">
+                <X />
+              </button>
+              <button className="btn" onClick={() => saveOverlay(false)}>
+                Speichern
+              </button>
+              <button className="btn btn-primary" onClick={() => saveOverlay(true)}>
+                Grenze zeichnen
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Steuerung beim Zeichnen */}
@@ -409,6 +497,11 @@ export default function MapPage() {
       {panel.t === 'layers' && (
         <LayerMenu
           current={baseLayer}
+          onAlign={(o) => {
+            setPanel({ t: 'none' })
+            setMode({ t: 'overlay', id: o.id, corners: o.corners, opacity: o.opacity })
+            flyToBounds(L.latLngBounds(o.corners.map((p) => [p.lat, p.lng] as [number, number])))
+          }}
           onPick={(id) => {
             setSetting('baseLayer', id)
             setPanel({ t: 'none' })
@@ -419,6 +512,7 @@ export default function MapPage() {
       {panel.t === 'add' && (
         <AddMenu
           onPick={startAdd}
+          onPhoto={startPhotoOverlay}
           onImported={(rows) => {
             setPanel({ t: 'none' })
             if (rows[0]) flyToBounds(L.geoJSON(rows.map((r) => r.geometry)).getBounds())

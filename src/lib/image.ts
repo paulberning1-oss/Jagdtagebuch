@@ -28,8 +28,9 @@ export async function resizeImage(file: Blob, maxDim = 1600, quality = 0.82) {
   return { blob, width: w, height: h }
 }
 
-export async function savePhoto(file: Blob, demo = false): Promise<string> {
-  const { blob, width, height } = await resizeImage(file)
+/** Foto verkleinert speichern; maxDim größer z. B. für Revierkarten (Beschriftung lesbar) */
+export async function savePhoto(file: Blob, demo = false, maxDim = 1600): Promise<string> {
+  const { blob, width, height } = await resizeImage(file, maxDim, maxDim > 1600 ? 0.88 : 0.82)
   const photo: Photo = { id: newId(), blob, mime: 'image/jpeg', width, height, demo, createdAt: Date.now() }
   await db.photos.add(photo)
   return photo.id

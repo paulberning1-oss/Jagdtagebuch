@@ -1,8 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, FileUp, PenLine, Trash2 } from 'lucide-react'
+import { Check, Eye, EyeOff, FileUp, Image, Move, PenLine, Trash2 } from 'lucide-react'
 import { useRef } from 'react'
 import { Sheet, useToast } from '../components/ui'
-import { db, type Boundary, type Facility } from '../db/db'
+import { db, type Boundary, type Facility, type MapOverlay } from '../db/db'
 import { FACILITY_TYPES, typeInfo, typesOfKind, type FacilityType } from '../domain/facilityTypes'
 import { fromPos, polygonArea } from '../lib/geo'
 import { newId } from '../lib/id'
@@ -11,7 +11,18 @@ import { TILE_PROVIDERS } from './providers'
 
 // ---------- Kartenebenen ----------
 
-export function LayerMenu({ current, onPick, onClose }: { current: string; onPick: (id: string) => void; onClose: () => void }) {
+export function LayerMenu({
+  current,
+  onPick,
+  onClose,
+  onAlign,
+}: {
+  current: string
+  onPick: (id: string) => void
+  onClose: () => void
+  onAlign: (o: MapOverlay) => void
+}) {
+  const overlays = useLiveQuery(() => db.overlays.toArray(), []) ?? []
   return (
     <Sheet title="Kartenebene" onClose={onClose}>
       <div className="grid gap-2">
@@ -35,6 +46,37 @@ export function LayerMenu({ current, onPick, onClose }: { current: string; onPic
           )
         })}
       </div>
+      {overlays.length > 0 && (
+        <>
+          <h3 className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-ink-dim">Eigene Revierkarten (Foto)</h3>
+          <div className="grid gap-2">
+            {overlays.map((o) => (
+              <div key={o.id} className="card flex flex-col gap-2 !p-3">
+                <p className="font-semibold">{o.name}</p>
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                  <button className={`btn !px-2 !text-base ${o.visible ? 'btn-primary' : ''}`} onClick={() => db.overlays.update(o.id, { visible: !o.visible })}>
+                    {o.visible ? <Eye /> : <EyeOff />} {o.visible ? 'Sichtbar' : 'Aus'}
+                  </button>
+                  <button className="btn !px-2 !text-base" onClick={() => onAlign(o)}>
+                    <Move /> Ausrichten
+                  </button>
+                  <button
+                    className="btn btn-danger !px-3"
+                    aria-label="Revierkarte löschen"
+                    onClick={async () => {
+                      if (!confirm(`„${o.name}“ löschen? (Eine daraus gezeichnete Reviergrenze bleibt erhalten.)`)) return
+                      await db.overlays.delete(o.id)
+                      await db.photos.delete(o.photoId)
+                    }}
+                  >
+                    <Trash2 />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </Sheet>
   )
 }
@@ -50,13 +92,16 @@ export type AddChoice =
 export function AddMenu({
   onPick,
   onImported,
+  onPhoto,
   onClose,
 }: {
   onPick: (c: AddChoice) => void
   onImported: (b: Boundary[]) => void
+  onPhoto: (file: File) => void
   onClose: () => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const photoRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
 
   const importFile = async (file: File | undefined) => {
@@ -107,6 +152,20 @@ export function AddMenu({
         <button className="btn" onClick={() => onPick({ t: 'boundary' })}>
           <PenLine /> Grenze einzeichnen
         </button>
+        <button className="btn" onClick={() => photoRef.current?.click()}>
+          <Image /> Aus Foto einer Revierkarte übertragen
+        </button>
+        <input
+          ref={photoRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            e.target.value = ''
+            if (f) onPhoto(f)
+          }}
+        />
         <button className="btn" onClick={() => fileRef.current?.click()}>
           <FileUp /> KML / GeoJSON importieren
         </button>

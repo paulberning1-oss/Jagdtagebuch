@@ -127,3 +127,50 @@ export function newSighting(h: Hunt | null, pos: LatLng, speciesId: string): Sig
     createdAt: now,
   }
 }
+
+/**
+ * Sichtung speichern. Sichtungen außerhalb eines Ansitzes bekommen eigene
+ * Bedingungen (Sonne/Mond sofort, Wetter über die Warteschlange).
+ */
+export async function saveSighting(s: Sighting): Promise<void> {
+  // Entfernte Fotos auch aus der Datenbank löschen
+  const before = await db.sightings.get(s.id)
+  const removed = before?.photoIds.filter((p) => !s.photoIds.includes(p)) ?? []
+  if (removed.length) await db.photos.bulkDelete(removed)
+  if (s.huntId) {
+    await db.sightings.put({ ...s, env: undefined, weatherStatus: undefined })
+    return
+  }
+  const old = await db.sightings.get(s.id)
+  const unchanged = old && old.time === s.time && old.lat === s.lat && old.lng === s.lng && old.env
+  const next: Sighting = unchanged
+    ? s
+    : {
+        ...s,
+        env: { weather: null, ...computeLocalEnv(s.time, s.time, s.lat, s.lng) },
+        weatherStatus: s.env?.weather?.source === 'demo' ? 'ok' : 'pending',
+        weatherTries: 0,
+        weatherError: undefined,
+      }
+  await db.sightings.put(next)
+  if (next.weatherStatus === 'pending') syncPendingWeather()
+}
+
+/** Mehrere Sichtungen auf einmal speichern (Wildkamera-Import) */
+export async function saveSightings(list: Sighting[]): Promise<void> {
+  const rows = list.map((s) => ({
+    ...s,
+    env: { weather: null, ...computeLocalEnv(s.time, s.time, s.lat, s.lng) },
+    weatherStatus: 'pending' as const,
+    weatherTries: 0,
+  }))
+  await db.sightings.bulkPut(rows)
+  syncPendingWeather()
+}
+
+export async function deleteSighting(id: string) {
+  const s = await db.sightings.get(id)
+  if (!s) return
+  if (s.photoIds.length) await db.photos.bulkDelete(s.photoIds)
+  await db.sightings.delete(id)
+}

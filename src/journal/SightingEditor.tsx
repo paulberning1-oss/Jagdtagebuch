@@ -2,13 +2,14 @@
 import { MapPin, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Chip, ChipGroup, Section, Stepper } from '../components/ui'
-import { db } from '../db/db'
 import { SIGHTING_SOURCES, type Sighting } from '../domain/hunt'
 import { BEHAVIORS } from '../domain/species'
 import { COMPASS_8, distance, type LatLng } from '../lib/geo'
 import { fromBerlinLocal, toBerlinLocal } from '../lib/time'
 import { MapPicker } from '../map/MapPicker'
+import { PhotoThumb } from '../map/FacilityEditor'
 import { useSpecies } from './hooks'
+import { deleteSighting, saveSighting } from './huntActions'
 
 export function SightingEditor({
   initial,
@@ -20,7 +21,8 @@ export function SightingEditor({
   isNew: boolean
   /** Position des Sitzes – für "am Sitz" */
   standPos: LatLng | null
-  onClose: () => void
+  /** saved = true, wenn gespeichert wurde */
+  onClose: (saved: boolean) => void
 }) {
   const species = useSpecies()
   const [s, setS] = useState<Sighting>(initial)
@@ -30,25 +32,35 @@ export function SightingEditor({
   const atStand = standPos != null && distance(standPos, { lat: s.lat, lng: s.lng }) < 5
 
   const save = async () => {
-    await db.sightings.put(s)
-    onClose()
+    await saveSighting(s)
+    onClose(true)
   }
   const remove = async () => {
     if (!confirm('Diese Sichtung löschen?')) return
-    await db.sightings.delete(s.id)
-    onClose()
+    await deleteSighting(s.id)
+    onClose(false)
   }
 
   return (
     <div className="fixed inset-0 z-[2000] flex flex-col bg-bg">
       <div className="pt-safe flex items-center gap-2 border-b border-line bg-panel px-4 py-2">
         <h2 className="flex-1 text-xl font-bold">{isNew ? 'Anblick erfassen' : 'Sichtung bearbeiten'}</h2>
-        <button className="btn-round !size-12" onClick={onClose} aria-label="Abbrechen">
+        <button className="btn-round !size-12" onClick={() => onClose(false)} aria-label="Abbrechen">
           <X />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
+        {s.photoIds.length > 0 && (
+          <Section title={`Fotos (${s.photoIds.length})`}>
+            <div className="grid grid-cols-3 gap-2">
+              {s.photoIds.map((pid) => (
+                <PhotoThumb key={pid} id={pid} onDelete={() => set({ photoIds: s.photoIds.filter((x) => x !== pid) })} />
+              ))}
+            </div>
+          </Section>
+        )}
+        {!s.huntId && s.env && <EnvSummary s={s} />}
         <Section title="Wildart">
           <div className="flex flex-wrap gap-2">
             {species.map((x) => (
@@ -155,5 +167,23 @@ export function SightingEditor({
         />
       )}
     </div>
+  )
+}
+
+/** Kurzinfo zu Wetter/Mond einer Sichtung außerhalb eines Ansitzes */
+function EnvSummary({ s }: { s: Sighting }) {
+  const w = s.env?.weather
+  const m = s.env?.moon
+  const parts: string[] = []
+  if (w?.windCompass) parts.push(`Wind ${w.windCompass} ${Math.round(w.windSpeed ?? 0)} km/h`)
+  if (w?.temperature != null) parts.push(`${Math.round(w.temperature)} °C`)
+  if (w?.pressureTrend) parts.push(`Luftdruck ${w.pressureTrend}`)
+  if (m) parts.push(`${m.phaseName} (${m.illumination} %)`)
+  if (s.env?.sun) parts.push(s.env.sun.period)
+  return (
+    <p className="mb-4 rounded-xl border border-line bg-panel p-3 text-sm text-ink-dim">
+      {parts.join(' · ')}
+      {s.weatherStatus && s.weatherStatus !== 'ok' && ' · Wetter wird nachgeladen'}
+    </p>
   )
 }

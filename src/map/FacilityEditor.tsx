@@ -236,7 +236,7 @@ export function usePhotoUrl(id: string | undefined) {
   return url
 }
 
-function PhotoThumb({ id, onDelete }: { id: string; onDelete: () => void }) {
+export function PhotoThumb({ id, onDelete }: { id: string; onDelete: () => void }) {
   const url = usePhotoUrl(id)
   const [big, setBig] = useState(false)
   return (

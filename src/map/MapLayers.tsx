@@ -353,3 +353,15 @@ export function FlyTo({
   }, [target, map])
   return null
 }
+
+/** Gibt die Leaflet-Karte nach außen (für Berechnungen außerhalb der Karte) */
+export function MapRef({ mapRef }: { mapRef: { current: L.Map | null } }) {
+  const map = useMap()
+  useEffect(() => {
+    mapRef.current = map
+    return () => {
+      mapRef.current = null
+    }
+  }, [map, mapRef])
+  return null
+}

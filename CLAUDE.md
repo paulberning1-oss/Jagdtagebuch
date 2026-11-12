@@ -15,7 +15,7 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - [x] Phase 0: Grundgerüst, CLAUDE.md, GitHub-Pages-Workflow
 - [x] Phase 1: Revierkarte, Reviereinrichtungen, Witterungskegel
 - [x] Phase 2: Ansitz-Tagebuch mit Wetter/Sonne/Mond (Open-Meteo + SunCalc), Offline-Warteschlange
-- [ ] Phase 3: Wildsichtungen, Wildkamera-Import (EXIF), Filter/Heatmap
+- [x] Phase 3: Wildsichtungen, Wildkamera-Import (EXIF), Filter/Heatmap, Wildarten-Editor, Revierkarte aus Foto
 - [ ] Phase 4: Kombinations-Assistent, Regelwerk, Statistik, ~40 Test-Ansitze
 - [ ] Phase 5: PWA/Offline, Kachel-Vorabspeicherung, JSON-Export/-Import, Jagdzeiten, Feinschliff
 
@@ -60,6 +60,12 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
   `SightingEditor`, `StartHuntSheet`), Seite `src/pages/JournalPage.tsx`. Routen `#/tagebuch/<id>[/bearbeiten]`.
 - **Wetter-Warteschlange:** `src/services/weatherSync.ts` (App-Start, `online`, alle 5 min; max. 5 Auto-Versuche)
 - **Kartenauswahl:** `src/map/MapPicker.tsx` (Vollbild, für Sichtungs-/Erlegungsort)
+- **Sichtungen:** Seite `src/pages/SightingsPage.tsx`, `src/sightings/` (Punkte/Heatmap-Layer, Filter-Sheet,
+  `CameraImport`), Logik `src/domain/sightings.ts` (Filter, Heatmap-Raster, Tageszeit nach Sonnenstand)
+- **Revierkarte aus Foto:** `src/map/PhotoOverlay.tsx` + `src/lib/homography.ts` (4 Ecken → CSS matrix3d,
+  eigenes Leaflet-Pane `photoPane` z-index 350). Tabelle `overlays`. Danach Grenze mit normalem Zeichenwerkzeug.
+- **Wildarten-Editor:** `src/pages/SpeciesEditor.tsx` (unter „Mehr“)
+- **EXIF:** `src/lib/exifTime.ts` (exifr, dynamisch geladen)
 - **Hilfen:** `src/lib/geo.ts` (ebene Näherung in Metern um Bezugspunkt), `src/lib/time.ts` (Europe/Berlin), `src/lib/sun.ts`
 - **Wetter:** `src/services/openMeteo.ts` – Forecast-API (≈3 Monate zurück, 15 Tage voraus), sonst Archiv-API.
 - **Routing:** Hash-Routing (`#/karte`, …) in `src/lib/router.ts` – funktioniert auf GitHub Pages.
@@ -91,6 +97,17 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - Mondauf-/-untergang: SunCalc rechnet in UTC-Tagen → beide überlappenden UTC-Tage abfragen.
 - Ansitze an Demo-Sitzen erben `demo: true` (werden mit den Testdaten gelöscht).
 - Dezimalfelder als `type="text" inputMode="decimal"` (`DecimalInput`), da iOS bei `type="number"` das Komma verschluckt.
+- DB-Schema v3: `overlays`, Index `cameraId` in `sightings`, Farben der Wildarten.
+- Sichtungen außerhalb eines Ansitzes haben eigene `env` + `weatherStatus` (Warteschlange lädt nach;
+  Anfragen werden je Ort+Tagesbereich zusammengefasst). Sichtungen im Ansitz nutzen die Bedingungen des Ansitzes.
+- Heatmap = einfaches Quadratraster (25/50/100/250 m je nach Zoom), Wert = Anzahl Stück, Farbe log-skaliert.
+- Tageszeit-Filter aus Sonnenstand am Ort/zur Zeit der Sichtung (nicht aus Uhrzeit).
+- Jagdjahr beginnt am 1. April.
+- EXIF-Zeit ohne Zeitzone = Berliner Ortszeit; OffsetTimeOriginal wird beachtet.
+- Wildkamera-Serien (gleiche Wildart, ≤ 2 min) → eine Sichtung, Anzahl = Maximum (nicht Summe).
+- Revier-Foto bleibt auf dem Gerät; Ausrichten per 4 Eckgriffen (perspektivisch), keine automatische Linienerkennung.
+- Wildart nur löschbar, wenn nirgends verwendet.
+- Demo-Sichtungen mit erfundenem Wetter (`source: 'demo'`, `src/demo/demoSightings.ts`, Zufall mit festem Startwert).
 - Offline-Kacheln (Phase 5): nur Esri/OSM/Topo, Google nie. OSM-Nutzungsregeln beachten (keine großen Downloads ab Zoom 17).
 
 ## Repository & Veröffentlichung

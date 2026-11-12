@@ -41,6 +41,14 @@ Diese Adresse in Safari auf dem iPhone öffnen. Safari warnt vor dem Zertifikat
 Auf GitHub liegt nur der Programmcode – deine Revierdaten bleiben im Browser
 deines Handys.
 
+## Reviergrenze aus einem Foto übertragen
+
+Karte → **Hinzufügen → „Aus Foto einer Revierkarte übertragen“**. Das Foto wird
+halb durchsichtig über das Luftbild gelegt. Ziehe die Ecken 1–4, bis Wege und
+Waldränder passen (✥ verschiebt das ganze Bild), dann **„Grenze zeichnen“** und
+die Grenzpunkte nachtippen. Das Foto bleibt auf deinem Gerät und lässt sich unter
+„Kartenebene“ ein- und ausblenden.
+
 ## Google-Satellitenbild (optional)
 
 1. In der [Google Cloud Console](https://console.cloud.google.com/) ein Projekt

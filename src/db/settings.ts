@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import type { SightingFilter } from '../domain/sightings'
 import { db } from './db'
 
 /** Alle Einstellungen mit Standardwerten an einer Stelle */
@@ -11,6 +12,10 @@ export interface Settings {
   baseLayer: string
   /** Letzter Kartenausschnitt */
   mapView: { lat: number; lng: number; zoom: number } | null
+  /** Filter der Sichtungskarte */
+  sightingFilter: SightingFilter
+  /** Darstellung der Sichtungen */
+  sightingView: 'punkte' | 'heatmap'
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -18,6 +23,8 @@ export const DEFAULT_SETTINGS: Settings = {
   scentWidth: 40,
   baseLayer: 'esri',
   mapView: null,
+  sightingFilter: { speciesIds: [], range: 'alle', periods: [], months: [], sources: [] },
+  sightingView: 'punkte',
 }
 
 export async function getSetting<K extends keyof Settings>(key: K): Promise<Settings[K]> {

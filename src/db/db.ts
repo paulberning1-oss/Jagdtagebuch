@@ -42,6 +42,17 @@ export interface Photo {
   createdAt: number
 }
 
+/** Revier-Foto als ausgerichtete Kartenebene (4 Ecken: oben links, oben rechts, unten rechts, unten links) */
+export interface MapOverlay {
+  id: string
+  name: string
+  photoId: string
+  corners: { lat: number; lng: number }[]
+  opacity: number
+  visible: boolean
+  createdAt: number
+}
+
 export interface Setting {
   key: string
   value: unknown
@@ -55,6 +66,7 @@ export class AnsitzDB extends Dexie {
   hunts!: EntityTable<Hunt, 'id'>
   sightings!: EntityTable<Sighting, 'id'>
   species!: EntityTable<Species, 'id'>
+  overlays!: EntityTable<MapOverlay, 'id'>
 
   constructor() {
     super('ansitzplaner')
@@ -73,6 +85,21 @@ export class AnsitzDB extends Dexie {
         species: 'id, order',
       })
       .upgrade((tx) => tx.table('species').bulkPut(DEFAULT_SPECIES))
+    // Phase 3: Revier-Foto-Ebenen, Wildkamera-Index, Farben der Wildarten
+    this.version(3)
+      .stores({
+        overlays: 'id',
+        sightings: 'id, huntId, time, speciesId, cameraId',
+      })
+      .upgrade(async (tx) => {
+        const byId = new Map(DEFAULT_SPECIES.map((s) => [s.id, s]))
+        await tx
+          .table('species')
+          .toCollection()
+          .modify((s: Species) => {
+            if (!s.color && byId.get(s.id)?.color) s.color = byId.get(s.id)!.color
+          })
+      })
     // Ganz neue Datenbank: Startliste der Wildarten anlegen
     this.on('populate', (tx) => {
       tx.table('species').bulkAdd(DEFAULT_SPECIES)

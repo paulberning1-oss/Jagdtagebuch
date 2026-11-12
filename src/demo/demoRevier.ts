@@ -7,6 +7,7 @@ import { db, type Boundary, type Facility } from '../db/db'
 import type { FacilityType } from '../domain/facilityTypes'
 import { fromXY, toPos } from '../lib/geo'
 import { newId } from '../lib/id'
+import { buildDemoSightings } from './demoSightings'
 
 export const DEMO_CENTER = { lat: 52.64, lng: 10.3 }
 export const DEMO_ZOOM = 15
@@ -99,9 +100,11 @@ export async function hasDemoData(): Promise<boolean> {
 
 export async function loadDemoData() {
   await clearDemoData()
-  await db.transaction('rw', db.facilities, db.boundaries, async () => {
+  const facilities = buildDemoFacilities()
+  await db.transaction('rw', [db.facilities, db.boundaries, db.sightings], async () => {
     await db.boundaries.add(buildDemoBoundary())
-    await db.facilities.bulkAdd(buildDemoFacilities())
+    await db.facilities.bulkAdd(facilities)
+    await db.sightings.bulkAdd(buildDemoSightings(facilities))
   })
 }
 

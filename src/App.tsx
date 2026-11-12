@@ -7,6 +7,7 @@ import { startWeatherSync } from './services/weatherSync'
 import MapPage from './pages/MapPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 import SettingsPage from './pages/SettingsPage'
+import SightingsPage from './pages/SightingsPage'
 
 const NAV: { route: Route; label: string; icon: ReactNode }[] = [
   { route: 'karte', label: 'Karte', icon: <MapIcon /> },
@@ -25,11 +26,7 @@ export default function App() {
       <div className="flex h-dvh flex-col">
         <main className="relative flex-1 overflow-hidden">
           {route === 'karte' && <MapPage />}
-          {route === 'sichtungen' && (
-            <PlaceholderPage title="Wildsichtungen" phase={3}>
-              Sichtungen per Tipp auf die Karte, Wildkamera-Import mit EXIF-Zeit, Filter und Heatmap.
-            </PlaceholderPage>
-          )}
+          {route === 'sichtungen' && <SightingsPage />}
           {route === 'tagebuch' && <JournalPage parts={parts} />}
           {route === 'assistent' && (
             <PlaceholderPage title="Kombinations-Assistent" phase={4}>
