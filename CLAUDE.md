@@ -71,9 +71,21 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - **Routing:** Hash-Routing (`#/karte`, …) in `src/lib/router.ts` – funktioniert auf GitHub Pages.
 - **Testdaten:** `src/demo/` – alles mit `demo: true`, löschbar über „Mehr → Testdaten löschen“.
 - **Deployment:** `.github/workflows/deploy.yml` → GitHub Pages. `base: './'` in `vite.config.ts`.
+- **Konto + Cloud (Supabase):** `src/cloud/` – `supabase.ts` (Client, nur mit `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`),
+  `auth.tsx` (`AuthGate`: Anmeldeseite E-Mail+Passwort, `useAccount`), `sync.ts` (Abgleich), `AccountSection.tsx` („Mehr → Mein Konto“).
+  Schema: `supabase/schema.sql` (Tabelle `records`, Bucket `photos`, RLS je `user_id`). Wach-Ping: `.github/workflows/supabase-keepalive.yml`.
 
 ## Getroffene Entscheidungen
-- Ein Nutzer, ein Gerät, keine Cloud. Nur Koordinaten + Datum gehen an Open-Meteo.
+- **Konto in der Cloud (Supabase, Region Frankfurt)**, damit nichts verloren geht und alle Geräte denselben Stand haben.
+  Offline zuerst: App schreibt nur lokal (Dexie), `sync.ts` gleicht im Hintergrund ab (Start, alle 60 s, nach Änderungen, `online`).
+  Eine generische Tabelle `records (user_id, tbl, id, data jsonb, deleted, updated_at)`; `updated_at` setzt der Server.
+  Änderungserkennung über Fingerabdruck je Eintrag (`syncState`, DB v4); Löschen = `deleted: true`. Konflikt: lokale Änderung gewinnt;
+  ist ein Eintrag lokal noch nie abgeglichen, gewinnt die Cloud. Fotos im privaten Bucket `photos/<user_id>/<photoId>`.
+  Nicht hochgeladen: Testdaten (`demo: true`) und die Geräte-Einstellung `mapView`. Meldet sich auf einem Gerät ein anderes Konto an,
+  werden die lokalen Kontodaten gelöscht. Später mehrere Jäger: jeder hat sein eigenes Konto, RLS trennt die Daten (gemeinsame Reviere = späterer Schritt).
+  Ohne Supabase-Konfiguration läuft die App wie früher nur lokal. Nur Koordinaten + Datum gehen an Open-Meteo.
+  **Neue Dexie-Tabelle mit Nutzerdaten → in `SYNCED_TABLES` (`src/cloud/sync.ts`) eintragen**, sonst wird sie nicht gesichert.
+  Neue Geräte-Einstellungen (nur dieses Gerät) → in `DEVICE_SETTINGS`. Binärdaten (Blobs) nur in `photos` – sonst Sync erweitern.
 - Zielgerät **iPhone** (Safari): `navigator.storage.persist()` anfragen; Backup-Erinnerung in Phase 5 wichtig.
 - Revier ist **flach** → keine Thermik-/Höhenlogik.
 - Witterungskegel: Standard 300 m lang, 40° Öffnung (einstellbar). Warnung bei Wechsel, Kirrung,
@@ -113,6 +125,9 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - Speicher ist pro Browser-Kontext getrennt (Safari, privater Tab, In-App-Browser anderer Apps, Home-Bildschirm-Symbol).
   „Mehr“ zeigt die Zahl eigener Einträge auf diesem Gerät (`src/db/ownData.ts`); Übersicht hat „Mein Revier anzeigen“;
   nach „Testdaten löschen“ springt die Karte zurück zum eigenen Revier.
+- Karte: Knopf „Revier“ (oben rechts, gelb) passt das Revier formatfüllend ein (`revierBounds`). Beim App-Start
+  wird einmal aufs Revier gezoomt (`FitOnStart`), danach bleibt der zuletzt gesehene Ausschnitt. `zoomSnap 0.25`,
+  damit das Einpassen nah genug ist. Ordner `sicherung/` (gitignored) für lokale GeoJSON-Sicherungen.
 - Demo-Sichtungen mit erfundenem Wetter (`source: 'demo'`, `src/demo/demoSightings.ts`, Zufall mit festem Startwert).
 - Offline-Kacheln (Phase 5): nur Esri/OSM/Topo, Google nie. OSM-Nutzungsregeln beachten (keine großen Downloads ab Zoom 17).
 

@@ -7,3 +7,6 @@ dist
 .DS_Store
 *.log
 coverage
+
+# Eigene Revierdaten (Sicherungen) bleiben lokal – nicht auf GitHub
+sicherung/

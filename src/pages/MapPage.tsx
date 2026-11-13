@@ -1,8 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import L from 'leaflet'
-import { Crosshair, Layers, List, LocateFixed, Plus, Timer, Undo2, Wind, X } from 'lucide-react'
+import { Crosshair, Fence, Layers, List, LocateFixed, Plus, Timer, Undo2, Wind, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer } from 'react-leaflet'
+import { MapContainer, useMap } from 'react-leaflet'
 import { Chip, useToast } from '../components/ui'
 import { db, type Boundary, type Facility } from '../db/db'
 import { revierBounds } from '../db/ownData'
@@ -52,7 +52,23 @@ type Panel =
 
 type FlyTarget = { pos: LatLng; zoom?: number; bounds?: L.LatLngBoundsExpression; raise?: boolean; n: number }
 
+type InitialView = { lat: number; lng: number; zoom: number } | { bounds: L.LatLngBoundsExpression }
+
 const GERMANY = { lat: 51.2, lng: 10.4, zoom: 6 }
+
+/** Nur beim ersten Öffnen der Karte nach dem App-Start aufs Revier zoomen –
+ *  beim Zurückkommen aus Tagebuch & Co. bleibt der zuletzt gesehene Ausschnitt. */
+let startedOnRevier = false
+
+/** Umriss des (eigenen) Reviers als Leaflet-Bereich – oder null, wenn noch nichts angelegt ist */
+async function revierLatLngBounds(): Promise<L.LatLngBoundsExpression | null> {
+  const r = await revierBounds()
+  if (!r) return null
+  return [
+    [r.bounds.south, r.bounds.west],
+    [r.bounds.north, r.bounds.east],
+  ]
+}
 
 export default function MapPage() {
   const facilities = useLiveQuery(() => db.facilities.toArray(), [])
@@ -62,7 +78,7 @@ export default function MapPage() {
   const baseLayer = useSetting('baseLayer')
   const toast = useToast()
 
-  const [initialView, setInitialView] = useState<{ lat: number; lng: number; zoom: number } | null>(null)
+  const [initialView, setInitialView] = useState<InitialView | null>(null)
   const [mode, setMode] = useState<Mode>({ t: 'view' })
   const [panel, setPanel] = useState<Panel>({ t: 'none' })
   const [zoom, setZoom] = useState(15)
@@ -72,19 +88,35 @@ export default function MapPage() {
   const flyN = useRef(0)
   const lastConeStand = useRef<string | null>(null)
 
-  // Startansicht: zuletzt gesehener Ausschnitt → Reviergrenze → Deutschland
+  // Startansicht: beim App-Start das ganze Revier formatfüllend → sonst zuletzt gesehener Ausschnitt → Deutschland
   useEffect(() => {
     ;(async () => {
-      const saved = await getSetting('mapView')
-      if (saved) return setInitialView(saved)
-      const b = await db.boundaries.toCollection().first()
-      if (b) {
-        const c = L.geoJSON(b.geometry).getBounds().getCenter()
-        return setInitialView({ lat: c.lat, lng: c.lng, zoom: 15 })
+      // Merker wird erst in <FitOnStart> gesetzt (React führt Effekte im Entwicklungsmodus doppelt aus)
+      if (!startedOnRevier) {
+        const bounds = await revierLatLngBounds()
+        if (bounds) return setInitialView({ bounds })
       }
-      setInitialView(GERMANY)
+      const saved = await getSetting('mapView')
+      setInitialView(saved ?? GERMANY)
     })()
   }, [])
+
+  // Revier kommt erst nach dem Öffnen dazu (z. B. erste Anmeldung auf neuem Gerät, Daten aus der Cloud)
+  // → einmalig darauf zoomen
+  const hasData = !!(facilities?.length || boundaries?.length)
+  useEffect(() => {
+    if (!hasData || startedOnRevier || !initialView || 'bounds' in initialView) return
+    startedOnRevier = true
+    revierLatLngBounds().then((bounds) => bounds && setFly({ pos: { lat: 0, lng: 0 }, bounds, n: ++flyN.current }))
+  }, [hasData, initialView])
+
+  /** Knopf „Mein Revier“: ganzes Revier so nah wie möglich ins Bild holen */
+  const showRevier = async () => {
+    const bounds = await revierLatLngBounds()
+    if (!bounds) return toast('Noch kein Revier eingezeichnet', 'error')
+    setPanel({ t: 'none' })
+    setFly({ pos: { lat: 0, lng: 0 }, bounds, n: ++flyN.current })
+  }
 
   // raise = Ziel oberhalb des unteren Panels zeigen
   const flyTo = useCallback((pos: LatLng, zoomLevel?: number, raise = false) => {
@@ -195,6 +227,9 @@ export default function MapPage() {
           await db.boundaries.add({ id, name: 'Reviergrenze', geometry, createdAt: now })
           setPanel({ t: 'boundary', id })
         }
+        // Erneut um dauerhaften Speicher bitten, jetzt wo wichtige Daten da sind
+        navigator.storage?.persist?.().catch(() => {})
+        toast('Reviergrenze gespeichert – Knopf „Revier“ zeigt sie jederzeit', 'success')
       } else if (mode.replaceId) {
         await db.facilities.update(mode.replaceId, { geometry, updatedAt: now })
         setPanel({ t: 'edit', id: mode.replaceId })
@@ -328,9 +363,12 @@ export default function MapPage() {
   return (
     <div className="relative h-full">
       <MapContainer
-        center={[initialView.lat, initialView.lng]}
-        zoom={initialView.zoom}
+        {...('bounds' in initialView
+          ? { bounds: initialView.bounds }
+          : { center: [initialView.lat, initialView.lng] as [number, number], zoom: initialView.zoom })}
         maxZoom={21}
+        // Feinere Zoomstufen, damit das Revier beim Einpassen formatfüllend (nah) erscheint
+        zoomSnap={0.25}
         zoomControl={false}
         className="h-full w-full"
         attributionControl
@@ -338,6 +376,7 @@ export default function MapPage() {
         <BaseLayer providerId={baseLayer} onUnavailable={onLayerUnavailable} />
         <MapClicks onClick={onMapClick} onMoveEnd={saveView} onZoom={setZoom} />
         <FlyTo target={fly} />
+        {'bounds' in initialView && <FitOnStart bounds={initialView.bounds} />}
         <MapRef mapRef={mapRef} />
         {overlays
           .filter((o) => o.visible || (mode.t === 'overlay' && mode.id === o.id))
@@ -479,6 +518,16 @@ export default function MapPage() {
       {/* Runde Knöpfe rechts */}
       {mode.t === 'view' && (
         <div className="pt-safe absolute right-3 top-3 z-[900] flex flex-col gap-3">
+          {!isEmpty && (
+            <button
+              className="btn-round !h-16 flex-col !gap-0 !border-accent !bg-accent !text-accent-ink"
+              onClick={showRevier}
+              aria-label="Mein Revier anzeigen"
+            >
+              <Fence className="size-6" />
+              <span className="text-[11px] font-bold leading-tight">Revier</span>
+            </button>
+          )}
           <button className="btn-round" onClick={() => setPanel({ t: 'layers' })} aria-label="Kartenebene">
             <Layers />
           </button>
@@ -564,15 +613,7 @@ export default function MapPage() {
       )}
       {panel.t === 'list' && (
         <FacilityList
-          onShowRevier={async () => {
-            const r = await revierBounds()
-            if (!r) return
-            setPanel({ t: 'none' })
-            flyToBounds([
-              [r.bounds.south, r.bounds.west],
-              [r.bounds.north, r.bounds.east],
-            ])
-          }}
+          onShowRevier={showRevier}
           onPickFacility={focusFacility}
           onPickBoundary={(b) => {
             flyToBounds(L.geoJSON(b.geometry).getBounds(), true)
@@ -617,6 +658,21 @@ export default function MapPage() {
       )}
     </div>
   )
+}
+
+/** Revier beim Start einpassen – erst wenn die Karte ihre endgültige Größe hat,
+ *  sonst sitzt es schief bzw. zu klein im Bild. */
+function FitOnStart({ bounds }: { bounds: L.LatLngBoundsExpression }) {
+  const map = useMap()
+  useEffect(() => {
+    startedOnRevier = true
+    const t = setTimeout(() => {
+      map.invalidateSize()
+      map.fitBounds(bounds, { padding: [24, 24], maxZoom: 18, animate: false })
+    }, 50)
+    return () => clearTimeout(t)
+  }, [map, bounds])
+  return null
 }
 
 /** Kleine Leiste oben links, solange ein Ansitz läuft – Tipp öffnet das Tagebuch */
