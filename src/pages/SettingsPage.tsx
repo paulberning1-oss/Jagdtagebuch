@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import { useToast } from '../components/ui'
 import { db } from '../db/db'
+import { ownDataCounts, revierBounds } from '../db/ownData'
 import { setSetting, useSetting } from '../db/settings'
 import { clearDemoData, DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/demoRevier'
 import { navigate } from '../lib/router'
@@ -17,7 +18,8 @@ export default function SettingsPage() {
     const b = await db.boundaries.filter((x) => !!x.demo).count()
     return f + b
   }, [])
-  const ownCount = useLiveQuery(() => db.facilities.filter((x) => !x.demo).count(), [])
+  const own = useLiveQuery(() => ownDataCounts(), [])
+  const ownCount = own?.facilities
   const [storage, setStorage] = useState<{ used: number; quota: number; persisted: boolean } | null>(null)
 
   useEffect(() => {
@@ -95,12 +97,39 @@ export default function SettingsPage() {
             onClick={async () => {
               if (!confirm('Alle Testdaten löschen? Deine eigenen Einträge bleiben erhalten.')) return
               await clearDemoData()
+              // Karte wieder auf das eigene Revier stellen (falls vorhanden)
+              const r = await revierBounds()
+              if (r?.own) {
+                await setSetting('mapView', {
+                  lat: (r.bounds.south + r.bounds.north) / 2,
+                  lng: (r.bounds.west + r.bounds.east) / 2,
+                  zoom: 15,
+                })
+              }
               toast('Testdaten gelöscht', 'success')
             }}
           >
             Testdaten löschen
           </button>
         </div>
+      </section>
+
+      <section className="card mb-4">
+        <h2 className="mb-2 text-lg font-bold">Deine Daten auf diesem Gerät</h2>
+        {own && (
+          <ul className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1">
+            <li>Einrichtungen: {own.facilities}</li>
+            <li>Reviergrenzen: {own.boundaries}</li>
+            <li>Ansitze: {own.hunts}</li>
+            <li>Sichtungen: {own.sightings}</li>
+            <li>Revierkarten-Fotos: {own.overlays}</li>
+          </ul>
+        )}
+        <p className="text-sm text-ink-dim">
+          Ohne Testdaten. Die Daten gehören zu <b>diesem Browser auf diesem Gerät</b>. Ein anderer Browser, ein privater Tab,
+          das Öffnen über einen Link in einer anderen App (z. B. Mail, Claude) oder ein Symbol auf dem Home-Bildschirm hat
+          jeweils einen eigenen, getrennten Speicher. Öffne die App deshalb immer auf demselben Weg, am besten in Safari.
+        </p>
       </section>
 
       <section className="card mb-4">

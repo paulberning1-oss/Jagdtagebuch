@@ -339,6 +339,7 @@ export function FlyTo({
       map.flyToBounds(target.bounds, {
         paddingTopLeft: [40, 40],
         paddingBottomRight: [40, target.raise ? map.getSize().y * 0.55 + 30 : 40],
+        maxZoom: 17,
         duration: 0.8,
       })
       return

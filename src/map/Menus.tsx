@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, Eye, EyeOff, FileUp, Image, Move, PenLine, Trash2 } from 'lucide-react'
+import { Check, Eye, EyeOff, FileUp, Image, Maximize, Move, PenLine, Trash2 } from 'lucide-react'
 import { useRef } from 'react'
 import { Sheet, useToast } from '../components/ui'
 import { db, type Boundary, type Facility, type MapOverlay } from '../db/db'
@@ -189,10 +189,13 @@ export function AddMenu({
 export function FacilityList({
   onPickFacility,
   onPickBoundary,
+  onShowRevier,
   onClose,
 }: {
   onPickFacility: (f: Facility) => void
   onPickBoundary: (b: Boundary) => void
+  /** Karte auf das ganze (eigene) Revier ausrichten */
+  onShowRevier: () => void
   onClose: () => void
 }) {
   const facilities = useLiveQuery(() => db.facilities.toArray(), []) ?? []
@@ -200,6 +203,11 @@ export function FacilityList({
   return (
     <Sheet title="Revier-Übersicht" onClose={onClose}>
       {!facilities.length && !boundaries.length && <p className="text-ink-dim">Noch nichts angelegt.</p>}
+      {(facilities.length > 0 || boundaries.length > 0) && (
+        <button className="btn btn-primary mb-4 w-full" onClick={onShowRevier}>
+          <Maximize /> Mein Revier anzeigen
+        </button>
+      )}
       {boundaries.length > 0 && (
         <>
           <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-dim">Reviergrenze</h3>

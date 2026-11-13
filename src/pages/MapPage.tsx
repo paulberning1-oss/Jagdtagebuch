@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer } from 'react-leaflet'
 import { Chip, useToast } from '../components/ui'
 import { db, type Boundary, type Facility } from '../db/db'
+import { revierBounds } from '../db/ownData'
 import { getSetting, setSetting, useSetting } from '../db/settings'
 import { DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/demoRevier'
 import { typeInfo, type FacilityType } from '../domain/facilityTypes'
@@ -563,6 +564,15 @@ export default function MapPage() {
       )}
       {panel.t === 'list' && (
         <FacilityList
+          onShowRevier={async () => {
+            const r = await revierBounds()
+            if (!r) return
+            setPanel({ t: 'none' })
+            flyToBounds([
+              [r.bounds.south, r.bounds.west],
+              [r.bounds.north, r.bounds.east],
+            ])
+          }}
           onPickFacility={focusFacility}
           onPickBoundary={(b) => {
             flyToBounds(L.geoJSON(b.geometry).getBounds(), true)

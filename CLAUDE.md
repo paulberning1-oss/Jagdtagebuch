@@ -110,6 +110,9 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
   „Frei“ (perspektivisch). „Form zurücksetzen“ = Rechteck im Bild-Seitenverhältnis. „Foto einpassen“ zoomt auf alle Ecken.
   Hinweisleiste oben ist `pointer-events-none`, damit Ecken darunter greifbar bleiben.
 - Wildart nur löschbar, wenn nirgends verwendet.
+- Speicher ist pro Browser-Kontext getrennt (Safari, privater Tab, In-App-Browser anderer Apps, Home-Bildschirm-Symbol).
+  „Mehr“ zeigt die Zahl eigener Einträge auf diesem Gerät (`src/db/ownData.ts`); Übersicht hat „Mein Revier anzeigen“;
+  nach „Testdaten löschen“ springt die Karte zurück zum eigenen Revier.
 - Demo-Sichtungen mit erfundenem Wetter (`source: 'demo'`, `src/demo/demoSightings.ts`, Zufall mit festem Startwert).
 - Offline-Kacheln (Phase 5): nur Esri/OSM/Topo, Google nie. OSM-Nutzungsregeln beachten (keine großen Downloads ab Zoom 17).
 
