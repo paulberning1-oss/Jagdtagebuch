@@ -16,7 +16,7 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - [x] Phase 1: Revierkarte, Reviereinrichtungen, Witterungskegel
 - [x] Phase 2: Ansitz-Tagebuch mit Wetter/Sonne/Mond (Open-Meteo + SunCalc), Offline-Warteschlange
 - [x] Phase 3: Wildsichtungen, Wildkamera-Import (EXIF), Filter/Heatmap, Wildarten-Editor, Revierkarte aus Foto
-- [ ] Phase 4: Kombinations-Assistent, Regelwerk, Statistik, ~40 Test-Ansitze
+- [x] Phase 4: Kombinations-Assistent, Regelwerk, Statistik, ~40 Test-Ansitze
 - [ ] Phase 5: PWA/Offline, Kachel-Vorabspeicherung, JSON-Export/-Import, Jagdzeiten, Feinschliff
 
 ## Fachbegriffe (Jagd)
@@ -69,7 +69,12 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - **Hilfen:** `src/lib/geo.ts` (ebene Näherung in Metern um Bezugspunkt), `src/lib/time.ts` (Europe/Berlin), `src/lib/sun.ts`
 - **Wetter:** `src/services/openMeteo.ts` – Forecast-API (≈3 Monate zurück, 15 Tage voraus), sonst Archiv-API.
 - **Routing:** Hash-Routing (`#/karte`, …) in `src/lib/router.ts` – funktioniert auf GitHub Pages.
+- **Kombinations-Assistent:** Seite `src/pages/AssistantPage.tsx` (Reiter Empfehlung / Statistik / Regelwerk),
+  Regeln + Wildarten-Profile in `src/domain/rules.ts` (`evaluateRules`, `RULES`, `SPECIES_PROFILES`),
+  Mischung mit eigenen Daten + Statistik in `src/domain/assistant.ts` (`rateStands`, `outcomeOf`, `similarity`, `huntStats`),
+  Wettervorhersage für den Plan in `src/assistant/usePlanConditions.ts` (Mittelpunkt der eigenen Sitze, Wind auch von Hand).
 - **Testdaten:** `src/demo/` – alles mit `demo: true`, löschbar über „Mehr → Testdaten löschen“.
+  `demoHunts.ts`: 42 Test-Ansitze mit bewussten Mustern (Eichenkanzel Rehwild bei Wind von vorn, Kirrungssitz Sauen bei hellem Mond, nie bei NW).
 - **Deployment:** `.github/workflows/deploy.yml` → GitHub Pages. `base: './'` in `vite.config.ts`.
 - **Konto + Cloud (Supabase):** `src/cloud/` – `supabase.ts` (Client, nur mit `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`),
   `auth.tsx` (`AuthGate`: Anmeldeseite E-Mail+Passwort, `useAccount`), `sync.ts` (Abgleich), `AccountSection.tsx` („Mehr → Mein Konto“).
@@ -99,6 +104,11 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - Assistent (Phase 4): Mischung `Punkte = (1−a)·Regelwerk + a·eigene Daten`, `a = n/(n+10)`,
   n = Zahl ähnlicher Ansitze. Keine ML-Bibliothek, nachvollziehbare Statistik.
 - Startregeln im Regelwerk sind als „Vorschlag, bitte prüfen“ markiert.
+- Assistent: Start 50 Punkte, Regeln geben ± Punkte (Stärke je Regel 0/0,5/1/1,5 in Setting `ruleSettings`, wird synchronisiert).
+  Erfolg eines Ansitzes (`outcomeOf`): erlegt 100 · Anblick Zielwildart 70 (ab 3 Stück 80) · anderes Wild 35 · nichts 10; Sterne zu 30 %.
+  Ähnlichkeit = Produkt aus Tageszeit, Wind (≤45° / ≤90°), Jahreszeit, Mondhelligkeit (abends/nachts), Drucktendenz.
+  Nur Ansitze VOR dem geplanten Beginn zählen. „Bester Wind“ nur mit mind. 2 Ansitzen und Anblick-Quote > 0.
+  Zielwildart im Setting `assistantSpecies` ('alle' = jede Wildart).
 - Jagd-/Schonzeiten pflegt der Nutzer selbst (keine fest einprogrammierten Rechtsdaten).
 - DB-Schema v2: Tabellen `hunts`, `sightings`, `species`. Wildarten per `upgrade()` und `on('populate')`.
 - Ansitz wird sofort lokal gespeichert; Sonne/Mond/Kalender lokal (SunCalc), nur Wetter braucht Internet
@@ -130,6 +140,14 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
   damit das Einpassen nah genug ist. Ordner `sicherung/` (gitignored) für lokale GeoJSON-Sicherungen.
 - Demo-Sichtungen mit erfundenem Wetter (`source: 'demo'`, `src/demo/demoSightings.ts`, Zufall mit festem Startwert).
 - Offline-Kacheln (Phase 5): nur Esri/OSM/Topo, Google nie. OSM-Nutzungsregeln beachten (keine großen Downloads ab Zoom 17).
+
+## Arbeitsweise: PC = Werkstatt, Handy = Endverbraucher
+- Gebaut wird immer auf einem **Arbeits-Branch**, nie direkt auf `main` committen. Jeder Push auf `main` geht sofort aufs Handy.
+- Veröffentlichen **nur auf ausdrücklichen Wunsch des Nutzers**: Doppelklick auf `Veröffentlichen.cmd` bzw. `npm run veroeffentlichen`
+  (`scripts/veroeffentlichen.mjs`). Prüft: alles committet, baut auf `origin/main` auf (nur vorwärts, nie überschreiben),
+  Tests, Build, Rückfrage j/n → `git push origin HEAD:main`.
+- GitHub-Workflow bricht ohne Supabase-Secrets und bei roten Tests ab → die alte Version bleibt online.
+- „Mehr“ zeigt ganz unten Stand (Bauzeit + Commit), damit man auf dem Handy sieht, ob die neue Version da ist.
 
 ## Repository & Veröffentlichung
 - GitHub: `paulberning1-oss/Jagdtagebuch` (Branch `main`)

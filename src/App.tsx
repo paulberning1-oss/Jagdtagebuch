@@ -3,10 +3,10 @@ import { useEffect, type ReactNode } from 'react'
 import { AuthGate } from './cloud/auth'
 import { ToastProvider } from './components/ui'
 import { navigate, useLocation, type Route } from './lib/router'
+import AssistantPage from './pages/AssistantPage'
 import JournalPage from './pages/JournalPage'
 import { startWeatherSync } from './services/weatherSync'
 import MapPage from './pages/MapPage'
-import PlaceholderPage from './pages/PlaceholderPage'
 import SettingsPage from './pages/SettingsPage'
 import SightingsPage from './pages/SightingsPage'
 
@@ -30,11 +30,7 @@ export default function App() {
           {route === 'karte' && <MapPage />}
           {route === 'sichtungen' && <SightingsPage />}
           {route === 'tagebuch' && <JournalPage parts={parts} />}
-          {route === 'assistent' && (
-            <PlaceholderPage title="Kombinations-Assistent" phase={4}>
-              Bewertung jedes Sitzes mit 0–100 Punkten aus Regelwerk und deinem Tagebuch – mit Begründung.
-            </PlaceholderPage>
-          )}
+          {route === 'assistent' && <AssistantPage />}
           {route === 'mehr' && <SettingsPage />}
         </main>
         <nav className="pb-safe grid grid-cols-5 border-t border-line bg-panel">

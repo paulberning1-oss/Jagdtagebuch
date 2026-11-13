@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import type { RuleSettings } from '../domain/rules'
 import type { SightingFilter } from '../domain/sightings'
 import { db } from './db'
 
@@ -16,6 +17,10 @@ export interface Settings {
   sightingFilter: SightingFilter
   /** Darstellung der Sichtungen */
   sightingView: 'punkte' | 'heatmap'
+  /** Assistent: Zielwildart ('alle' = jede Wildart) */
+  assistantSpecies: string
+  /** Assistent: eigene Stärke je Regel */
+  ruleSettings: RuleSettings
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -25,6 +30,8 @@ export const DEFAULT_SETTINGS: Settings = {
   mapView: null,
   sightingFilter: { speciesIds: [], range: 'alle', periods: [], months: [], sources: [] },
   sightingView: 'punkte',
+  assistantSpecies: 'rehwild',
+  ruleSettings: {},
 }
 
 export async function getSetting<K extends keyof Settings>(key: K): Promise<Settings[K]> {
