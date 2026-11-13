@@ -113,6 +113,9 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - Speicher ist pro Browser-Kontext getrennt (Safari, privater Tab, In-App-Browser anderer Apps, Home-Bildschirm-Symbol).
   „Mehr“ zeigt die Zahl eigener Einträge auf diesem Gerät (`src/db/ownData.ts`); Übersicht hat „Mein Revier anzeigen“;
   nach „Testdaten löschen“ springt die Karte zurück zum eigenen Revier.
+- Karte: Knopf „Revier“ (oben rechts, gelb) passt das Revier formatfüllend ein (`revierBounds`). Beim App-Start
+  wird einmal aufs Revier gezoomt (`FitOnStart`), danach bleibt der zuletzt gesehene Ausschnitt. `zoomSnap 0.25`,
+  damit das Einpassen nah genug ist. Ordner `sicherung/` (gitignored) für lokale GeoJSON-Sicherungen.
 - Demo-Sichtungen mit erfundenem Wetter (`source: 'demo'`, `src/demo/demoSightings.ts`, Zufall mit festem Startwert).
 - Offline-Kacheln (Phase 5): nur Esri/OSM/Topo, Google nie. OSM-Nutzungsregeln beachten (keine großen Downloads ab Zoom 17).
 
