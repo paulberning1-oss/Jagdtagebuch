@@ -30,7 +30,7 @@ export const SPECIES_PROFILES: Record<string, SpeciesProfile> = {
   rehwild: {
     activity: { Morgen: 1, Abend: 1, Tag: 0.3, Nacht: 0.4 },
     night: false,
-    attractors: ['aesung', 'feld', 'salzlecke', 'wechsel'],
+    attractors: ['aesung', 'feld', 'salzlecke', 'wechsel', 'neuanpflanzung'],
     peakMonths: [5, 7, 8],
     peakText: 'Mai (Bockjagd) und Blattzeit im Juli/August',
   },
@@ -93,7 +93,7 @@ export const SPECIES_PROFILES: Record<string, SpeciesProfile> = {
   wildenten: {
     activity: { Morgen: 1, Abend: 1, Tag: 0.3, Nacht: 0.4 },
     night: false,
-    attractors: ['suhle'],
+    attractors: ['suhle', 'gewaesser'],
     peakMonths: [9, 10, 11, 12],
     peakText: 'Herbst und Winter',
   },
@@ -130,7 +130,7 @@ export const RULES: RuleDef[] = [
   { id: 'umfeld', label: 'Umfeld des Sitzes', description: 'Liegen Äsung, Feld, Kirrung, Salzlecke oder Wechsel der Zielwildart im Schussfeld des Sitzes (ohne eingetragenes Schussfeld: rundum bis 250 m)?' },
   { id: 'jahreszeit', label: 'Jahreszeit', description: 'Besonders gute Zeiten der Wildart (z. B. Blattzeit, Brunft, Sauen im Mais).' },
   { id: 'anblicke', label: 'Letzte Anblicke', description: 'Wurde die Zielwildart in den letzten 6 Wochen nahe am Sitz (bis 300 m) zur gleichen Tageszeit gesehen?' },
-  { id: 'ruhe', label: 'Ruhe am Sitz', description: 'Wurde der Sitz gerade erst besetzt? Häufiges Ansitzen beunruhigt das Wild.' },
+  { id: 'ruhe', label: 'Ruhe am Sitz', description: 'Wurde der Sitz gerade erst besetzt? Häufiges Ansitzen beunruhigt das Wild. Auch eine eingezeichnete Störquelle bis 200 m gibt Abzug.' },
 ]
 
 /** Stärke einer Regel: 0 = aus, 0.5 = schwach, 1 = normal, 1.5 = stark */
@@ -322,6 +322,17 @@ export function evaluateRules(stand: Facility, ctx: RuleContext): Reason[] {
   const recent7 = before.filter((h) => ctx.start - h.end! < 7 * DAY)
   if (recent48.length) add('ruhe', -10, 'Sitz wurde in den letzten 2 Tagen besetzt – Wild kann noch beunruhigt sein.')
   else if (recent7.length >= 3) add('ruhe', -6, `Sitz wurde diese Woche schon ${recent7.length}× besetzt.`)
+
+  // Eingezeichnete Störquellen in der Nähe (Spazierweg, Hof, Hundeauslauf …)
+  const disturbers = ctx.facilities
+    .filter((f) => f.type === 'stoerquelle')
+    .map((f) => ({ f, d: Math.min(...samplePoints(f).map((p) => distance(pos, p))) }))
+    .filter((x) => x.d <= 200)
+    .sort((a, b) => a.d - b.d)
+  if (disturbers.length) {
+    const x = disturbers[0]
+    add('ruhe', -6, `Störquelle${x.f.name ? ` „${x.f.name}“` : ''} in der Nähe (ca. ${Math.round(x.d / 10) * 10} m) – Wild ist hier oft vorsichtiger.`)
+  }
 
   return out
 }

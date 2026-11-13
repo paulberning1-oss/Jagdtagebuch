@@ -3,7 +3,7 @@ import { Camera, Move, PenLine, Play, Trash2, Wind } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Field, Sheet, useToast } from '../components/ui'
 import { db, type Facility } from '../db/db'
-import { typeInfo, typesOfKind, type FacilityType } from '../domain/facilityTypes'
+import { CROPS, kindOfGeometry, OBJECT_COLORS, typeInfo, typesOfKind, type FacilityType } from '../domain/facilityTypes'
 import { COMPASS_8, compass16, fromPos, lineLength, polygonArea } from '../lib/geo'
 import { savePhoto } from '../lib/image'
 import { navigate } from '../lib/router'
@@ -124,16 +124,61 @@ export function FacilityEditor({
       <Field label="Name">
         <input className="input" value={draft.name} onChange={(e) => update({ name: e.target.value })} placeholder={info.label} />
       </Field>
-      <Field label="Typ">
+      <Field label="Kategorie">
         <select className="input" value={draft.type} onChange={(e) => update({ type: e.target.value as FacilityType })}>
-          {typesOfKind(info.kind).map((t) => (
-            <option key={t.type} value={t.type}>
-              {t.label}
-            </option>
-          ))}
+          {/* Nur Kategorien, die zur Geometrie passen (Punkt / Linie / Fläche); Sitze bleiben Sitze */}
+          {typesOfKind(kindOfGeometry(draft.geometry))
+            .filter((t) => t.isStand === info.isStand || t.type === draft.type)
+            .map((t) => (
+              <option key={t.type} value={t.type}>
+                {t.label}
+                {t.custom ? ' (eigene)' : ''}
+              </option>
+            ))}
         </select>
       </Field>
       {size && <p className="-mt-2 mb-4 text-ink-dim">Größe: {size}</p>}
+
+      {info.hasCrop && (
+        <Field label="Feldfrucht">
+          <input
+            className="input"
+            list="crop-list"
+            value={draft.crop ?? ''}
+            onChange={(e) => update({ crop: e.target.value || null })}
+            placeholder="z. B. Mais, Weizen, Raps"
+          />
+          <datalist id="crop-list">
+            {CROPS.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </Field>
+      )}
+
+      {!info.isStand && (
+        <div className="mb-4">
+          <span className="label">Farbe auf der Karte</span>
+          <div className="grid grid-cols-7 gap-2">
+            <button
+              className={`h-11 rounded-xl border-2 text-xs font-semibold ${!draft.color ? 'border-ink' : 'border-line'}`}
+              style={{ background: info.color, color: '#000' }}
+              onClick={() => update({ color: null })}
+            >
+              Std.
+            </button>
+            {OBJECT_COLORS.filter((c) => c !== info.color).slice(0, 6).map((c) => (
+              <button
+                key={c}
+                aria-label={`Farbe ${c}`}
+                className={`h-11 rounded-xl border-2 ${draft.color === c ? 'border-ink' : 'border-transparent'}`}
+                style={{ background: c }}
+                onClick={() => update({ color: c })}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {info.isStand && <ShootingFieldEditor f={draft} update={update} />}
 

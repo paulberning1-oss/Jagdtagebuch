@@ -2,7 +2,7 @@
 // Nichts davon verlässt das Gerät.
 import Dexie, { type EntityTable } from 'dexie'
 import type { LineString, MultiPolygon, Point, Polygon } from 'geojson'
-import type { FacilityType } from '../domain/facilityTypes'
+import type { Category, FacilityType } from '../domain/facilityTypes'
 import type { Hunt, Sighting } from '../domain/hunt'
 import { DEFAULT_SPECIES, type Species } from '../domain/species'
 
@@ -20,6 +20,10 @@ export interface Facility {
   fieldRange?: number | null
   notes: string
   photoIds: string[]
+  /** Eigene Farbe (sonst Farbe der Kategorie) */
+  color?: string | null
+  /** Feldfrucht (bei Agrarflächen) */
+  crop?: string | null
   /** true = gehört zu den Testdaten (Beispielrevier) */
   demo?: boolean
   createdAt: number
@@ -84,6 +88,7 @@ export class AnsitzDB extends Dexie {
   overlays!: EntityTable<MapOverlay, 'id'>
   syncState!: Dexie.Table<SyncState, [string, string]>
   syncMeta!: EntityTable<SyncMeta, 'key'>
+  categories!: EntityTable<Category, 'id'>
 
   constructor() {
     super('ansitzplaner')
@@ -121,6 +126,10 @@ export class AnsitzDB extends Dexie {
     this.version(4).stores({
       syncState: '[tbl+id]',
       syncMeta: 'key',
+    })
+    // Erweiterung: eigene Kategorien für Objekte auf der Karte
+    this.version(5).stores({
+      categories: 'id, order',
     })
     // Ganz neue Datenbank: Startliste der Wildarten anlegen
     this.on('populate', (tx) => {

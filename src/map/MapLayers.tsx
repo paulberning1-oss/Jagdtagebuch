@@ -3,7 +3,7 @@ import L from 'leaflet'
 import { useEffect, useMemo, useRef } from 'react'
 import { Circle, CircleMarker, Marker, Polygon, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import type { Boundary, Facility } from '../db/db'
-import { typeInfo } from '../domain/facilityTypes'
+import { facilityColor, typeInfo } from '../domain/facilityTypes'
 import { shootingField, shootingFieldPolygon } from '../domain/shootingField'
 import { fromPos, sector, type LatLng } from '../lib/geo'
 import { fetchGoogleAttribution } from './googleTiles'
@@ -118,9 +118,10 @@ function markerIcon(f: Facility, selected: boolean, highlighted: boolean) {
   const round = !info.isStand
   const cls = `fac-marker${round ? ' round' : ''}${selected ? ' selected' : ''}`
   const ring = highlighted ? 'box-shadow:0 0 0 4px #ef6b4a;' : ''
+  const glyph = info.glyph.replace(/[<>&"]/g, '')
   return L.divIcon({
     className: '',
-    html: `<div class="${cls}" style="width:${size}px;height:${size}px;background:${info.color};${ring}">${info.glyph}</div>`,
+    html: `<div class="${cls}" style="width:${size}px;height:${size}px;background:${facilityColor(f)};${ring}">${glyph}</div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   })
@@ -151,6 +152,7 @@ export function FacilityLayer({
     <>
       {sorted.map((f) => {
         const info = typeInfo(f.type)
+        const color = facilityColor(f)
         const hl = highlightIds?.has(f.id) ?? false
         const sel = selectedId === f.id
         const key = `${f.id}-${interactive ? 1 : 0}-${f.updatedAt}`
@@ -170,10 +172,11 @@ export function FacilityLayer({
               interactive={interactive}
               eventHandlers={handlers}
               pathOptions={{
-                color: hl ? '#ef6b4a' : info.color,
+                color: hl ? '#ef6b4a' : color,
                 weight: hl || sel ? 4 : 2,
-                fillColor: info.color,
+                fillColor: color,
                 fillOpacity: 0.22,
+                dashArray: info.dash,
               }}
             >
               {showLabels && f.name && (
@@ -191,8 +194,14 @@ export function FacilityLayer({
               positions={f.geometry.coordinates.map(fromPos)}
               interactive={interactive}
               eventHandlers={handlers}
-              pathOptions={{ color: hl ? '#ef6b4a' : info.color, weight: hl || sel ? 7 : 5, dashArray: '10 8' }}
-            />
+              pathOptions={{ color: hl ? '#ef6b4a' : color, weight: hl || sel ? 7 : 5, dashArray: info.dash }}
+            >
+              {showLabels && f.name && (
+                <Tooltip permanent direction="center" className="facility-label">
+                  {f.name}
+                </Tooltip>
+              )}
+            </Polyline>
           )
         }
         const pos = fromPos(f.geometry.coordinates)

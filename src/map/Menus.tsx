@@ -1,9 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, Eye, EyeOff, FileUp, Image, Maximize, Move, PenLine, Trash2 } from 'lucide-react'
-import { useRef } from 'react'
+import { Check, Eye, EyeOff, FileUp, Image, Maximize, Move, PenLine, Plus, Trash2 } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { Sheet, useToast } from '../components/ui'
 import { db, type Boundary, type Facility, type MapOverlay } from '../db/db'
-import { FACILITY_TYPES, typeInfo, typesOfKind, type FacilityType } from '../domain/facilityTypes'
+import { allTypes, typeInfo, typesOfKind, type FacilityType, type GeometryKind } from '../domain/facilityTypes'
+import { CategoryForm } from './CategoryForm'
 import { fromPos, polygonArea } from '../lib/geo'
 import { newId } from '../lib/id'
 import { readBoundaryFile } from '../lib/importBoundary'
@@ -103,6 +104,8 @@ export function AddMenu({
   const fileRef = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
+  // Neue eigene Kategorie für diese Geometrie anlegen
+  const [newCat, setNewCat] = useState<GeometryKind | null>(null)
 
   const importFile = async (file: File | undefined) => {
     if (!file) return
@@ -138,9 +141,25 @@ export function AddMenu({
             <span className="truncate">{ti.label}</span>
           </button>
         ))}
+        <button className="btn !justify-start !px-3 text-base text-ink-dim" onClick={() => setNewCat(kind)}>
+          <Plus className="size-8 shrink-0 rounded border border-dashed border-line p-1" />
+          <span className="truncate">Eigene Kategorie…</span>
+        </button>
       </div>
     </>
   )
+
+  if (newCat) {
+    return (
+      <Sheet title="Neue Kategorie" onClose={() => setNewCat(null)}>
+        <CategoryForm
+          presetKind={newCat}
+          onCancel={() => setNewCat(null)}
+          onSaved={(c) => onPick({ t: newCat, type: c.id })}
+        />
+      </Sheet>
+    )
+  }
 
   return (
     <Sheet title="Hinzufügen" onClose={onClose}>
@@ -220,7 +239,7 @@ export function FacilityList({
           </div>
         </>
       )}
-      {FACILITY_TYPES.map((ti) => {
+      {allTypes().map((ti) => {
         const items = facilities.filter((f) => f.type === ti.type).sort((a, b) => a.name.localeCompare(b.name, 'de'))
         if (!items.length) return null
         return (

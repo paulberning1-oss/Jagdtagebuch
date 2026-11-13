@@ -1,7 +1,10 @@
 import { BookOpen, Compass, Map as MapIcon, Menu, Telescope } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { useEffect, useMemo, type ReactNode } from 'react'
 import { AuthGate } from './cloud/auth'
 import { ToastProvider } from './components/ui'
+import { db } from './db/db'
+import { registerCustomCategories } from './domain/facilityTypes'
 import { navigate, useLocation, type Route } from './lib/router'
 import AssistantPage from './pages/AssistantPage'
 import JournalPage from './pages/JournalPage'
@@ -22,6 +25,9 @@ export default function App() {
   const { route, parts } = useLocation()
   // Wetterdaten offener Ansitze nachladen, sobald Internet da ist
   useEffect(() => startWeatherSync(), [])
+  // Eigene Kategorien einhängen, bevor die Seiten zeichnen (typeInfo kennt sie danach)
+  const categories = useLiveQuery(() => db.categories.toArray(), [])
+  useMemo(() => categories && registerCustomCategories(categories), [categories])
   return (
     <ToastProvider>
       <AuthGate>

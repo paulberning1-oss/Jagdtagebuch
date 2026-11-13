@@ -96,6 +96,12 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - Schussfeld (`src/domain/shootingField.ts`, Editor `src/map/ShootingFieldEditor.tsx`): gespeichert als `bearing` (Mitte)
   + `fieldWidth` (Breite, 360 = rundum) + `fieldRange` (m, Standard 150). Start-/Endwinkel sind nur Darstellung
   (`fromStartEnd`) → alte Sitze ohne Umbau gültig. Bei „Rundum“ kein Wind von vorn/hinten (`standFacing`).
+- Kategorien (`src/domain/facilityTypes.ts`): feste Kategorien im Code (Sitze, Kirrung, Wechsel … + Startliste
+  Fluss/Bach, Graben, Weg, Zaun, Neuanpflanzung, Störquelle; „Feld / Agrarfläche“ mit Feldfrucht) + eigene Kategorien
+  in Tabelle `categories` (DB v5, Kennung `k_…`), zur Laufzeit per `registerCustomCategories` (in `App.tsx`) eingehängt.
+  `FacilityType` ist deshalb `string`; `typeInfo` unbekannter Kategorien → „Unbekannte Kategorie“, nie Sitz.
+  Eine Kategorie kann mehrere Geometrien erlauben (`kinds`). Objekte: optional eigene `color`, `crop`.
+  Kategorie nur löschbar, wenn kein Objekt sie nutzt. Störquelle bis 200 m → Abzug in Regel „Ruhe“.
 - Witterungskegel: Standard 300 m lang, 40° Öffnung (einstellbar). Warnung bei Wechsel, Kirrung,
   Salzlecke, Suhle, Dickung, Einstand; Hinweis bei Äsungsfläche. Zusätzlich Wind relativ zur Blickrichtung.
 - Wind < 4 km/h gilt als „umlaufend“ (Hinweis), Böen ≥ 40 km/h als Unruhe-Hinweis.

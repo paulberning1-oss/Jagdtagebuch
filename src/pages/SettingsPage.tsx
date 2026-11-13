@@ -8,6 +8,7 @@ import { setSetting, useSetting } from '../db/settings'
 import { clearDemoData, DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/demoRevier'
 import { navigate } from '../lib/router'
 import { hasGoogleKey } from '../map/googleTiles'
+import { CategoryList } from './CategoryList'
 import { SpeciesEditor } from './SpeciesEditor'
 
 export default function SettingsPage() {
@@ -74,6 +75,12 @@ export default function SettingsPage() {
         <h2 className="mb-1 text-lg font-bold">Wildarten</h2>
         <p className="mb-3 text-ink-dim">Antippen zum Bearbeiten. Die Reihenfolge gilt für alle Auswahllisten.</p>
         <SpeciesEditor />
+      </section>
+
+      <section className="card mb-4">
+        <h2 className="mb-1 text-lg font-bold">Kategorien für Objekte</h2>
+        <p className="mb-3 text-ink-dim">Eigene Kategorien für Punkte, Linien und Flächen auf der Karte.</p>
+        <CategoryList />
       </section>
 
       <section className="card mb-4">
