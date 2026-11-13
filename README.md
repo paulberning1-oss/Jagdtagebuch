@@ -35,11 +35,26 @@ Diese Adresse in Safari auf dem iPhone öffnen. Safari warnt vor dem Zertifikat
 
 1. Code liegt auf GitHub: https://github.com/paulberning1-oss/Jagdtagebuch (Branch `main`).
 2. Auf GitHub: **Settings → Pages → Source: „GitHub Actions“** auswählen.
-3. Nach jedem Push baut GitHub die App automatisch (Reiter **Actions**).
+3. Nach jedem Push auf `main` baut GitHub die App automatisch (Reiter **Actions**).
    Die Adresse lautet **https://paulberning1-oss.github.io/Jagdtagebuch/**
 
-Auf GitHub liegt nur der Programmcode – deine Revierdaten bleiben im Browser
-deines Handys.
+### Der Knopf „Veröffentlichen“
+
+Am PC wird auf einem Arbeits-Branch gebaut – das Handy merkt davon nichts.
+Wenn ein Stand fertig ist: **Doppelklick auf `Veröffentlichen.cmd`** im Projektordner
+(oder `npm run veroeffentlichen`). Das Skript prüft der Reihe nach:
+
+1. Alles committet?
+2. Baut der Stand auf der veröffentlichten Version auf (nichts wird überschrieben)?
+3. Laufen alle Tests?
+4. Lässt sich die App bauen?
+5. Rückfrage „Jetzt veröffentlichen? (j/n)“
+
+Erst dann geht der Stand auf `main`, und GitHub stellt ihn nach 2–3 Minuten online.
+Schlägt irgendetwas fehl – auch beim Bauen auf GitHub –, bleibt die bisherige Version auf dem Handy.
+Unter **Mehr** steht ganz unten, welcher Stand gerade läuft.
+
+Auf GitHub liegt nur der Programmcode (öffentlich) – deine Revierdaten liegen privat in deinem Konto.
 
 ## Konto: Daten in der Cloud sichern (Supabase)
 

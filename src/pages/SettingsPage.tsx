@@ -163,7 +163,13 @@ export default function SettingsPage() {
         </p>
       </section>
 
-      <p className="pb-4 text-center text-sm text-ink-dim">Ansitzplaner · Version {__APP_VERSION__}</p>
+      <p className="pb-4 text-center text-sm text-ink-dim">
+        Ansitzplaner · Version {__APP_VERSION__}
+        <br />
+        Stand {new Date(__BUILD_TIME__).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })} ·{' '}
+        {__BUILD_COMMIT__}
+        {import.meta.env.DEV ? ' · PC-Vorschau' : ''}
+      </p>
     </div>
   )
 }

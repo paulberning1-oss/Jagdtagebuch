@@ -1,0 +1,2 @@
+# Windows-Startdateien brauchen CRLF-Zeilenenden
+*.cmd text eol=crlf

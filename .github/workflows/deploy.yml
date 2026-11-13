@@ -28,6 +28,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # Ohne Supabase-Zugang hätte die Handy-Version kein Konto (leere Karte) → lieber gar nicht veröffentlichen
+      - name: Supabase-Secrets prüfen
+        env:
+          URL: ${{ secrets.VITE_SUPABASE_URL }}
+          KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::Secrets VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY fehlen (Settings → Secrets and variables → Actions). Nichts veröffentlicht – die bisherige Version bleibt online."
+            exit 1
+          fi
       - run: npm ci
       - run: npm test
       - run: npm run build

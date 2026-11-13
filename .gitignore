@@ -10,3 +10,6 @@ coverage
 
 # Eigene Revierdaten (Sicherungen) bleiben lokal – nicht auf GitHub
 sicherung/
+
+# Startdatei der Claude-Vorschau (enthaelt Pfade dieses PCs)
+.claude/launch.json
