@@ -101,6 +101,15 @@ export default function MapPage() {
     })()
   }, [])
 
+  // Revier kommt erst nach dem Öffnen dazu (z. B. erste Anmeldung auf neuem Gerät, Daten aus der Cloud)
+  // → einmalig darauf zoomen
+  const hasData = !!(facilities?.length || boundaries?.length)
+  useEffect(() => {
+    if (!hasData || startedOnRevier || !initialView || 'bounds' in initialView) return
+    startedOnRevier = true
+    revierLatLngBounds().then((bounds) => bounds && setFly({ pos: { lat: 0, lng: 0 }, bounds, n: ++flyN.current }))
+  }, [hasData, initialView])
+
   /** Knopf „Mein Revier“: ganzes Revier so nah wie möglich ins Bild holen */
   const showRevier = async () => {
     const bounds = await revierLatLngBounds()

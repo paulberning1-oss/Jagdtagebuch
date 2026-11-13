@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
+import { AccountSection } from '../cloud/AccountSection'
 import { useToast } from '../components/ui'
 import { db } from '../db/db'
 import { ownDataCounts, revierBounds } from '../db/ownData'
@@ -35,6 +36,8 @@ export default function SettingsPage() {
   return (
     <div className="h-full overflow-y-auto p-4 pt-safe">
       <h1 className="mb-4 text-2xl font-bold">Mehr</h1>
+
+      <AccountSection />
 
       <section className="card mb-4">
         <h2 className="mb-3 text-lg font-bold">Witterungskegel</h2>

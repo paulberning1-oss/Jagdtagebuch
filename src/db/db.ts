@@ -58,6 +58,19 @@ export interface Setting {
   value: unknown
 }
 
+/** Stand der Cloud-Synchronisierung je Eintrag: Fingerabdruck des zuletzt abgeglichenen Inhalts */
+export interface SyncState {
+  tbl: string
+  id: string
+  hash: string
+}
+
+/** Verwaltungswerte der Synchronisierung (nur lokal, wird nie hochgeladen) */
+export interface SyncMeta {
+  key: string
+  value: unknown
+}
+
 export class AnsitzDB extends Dexie {
   facilities!: EntityTable<Facility, 'id'>
   boundaries!: EntityTable<Boundary, 'id'>
@@ -67,6 +80,8 @@ export class AnsitzDB extends Dexie {
   sightings!: EntityTable<Sighting, 'id'>
   species!: EntityTable<Species, 'id'>
   overlays!: EntityTable<MapOverlay, 'id'>
+  syncState!: Dexie.Table<SyncState, [string, string]>
+  syncMeta!: EntityTable<SyncMeta, 'key'>
 
   constructor() {
     super('ansitzplaner')
@@ -100,6 +115,11 @@ export class AnsitzDB extends Dexie {
             if (!s.color && byId.get(s.id)?.color) s.color = byId.get(s.id)!.color
           })
       })
+    // Cloud-Konto: Abgleich-Stand je Eintrag + Verwaltungswerte
+    this.version(4).stores({
+      syncState: '[tbl+id]',
+      syncMeta: 'key',
+    })
     // Ganz neue Datenbank: Startliste der Wildarten anlegen
     this.on('populate', (tx) => {
       tx.table('species').bulkAdd(DEFAULT_SPECIES)

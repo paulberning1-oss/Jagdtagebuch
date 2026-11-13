@@ -1,5 +1,6 @@
 import { BookOpen, Compass, Map as MapIcon, Menu, Telescope } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
+import { AuthGate } from './cloud/auth'
 import { ToastProvider } from './components/ui'
 import { navigate, useLocation, type Route } from './lib/router'
 import JournalPage from './pages/JournalPage'
@@ -23,6 +24,7 @@ export default function App() {
   useEffect(() => startWeatherSync(), [])
   return (
     <ToastProvider>
+      <AuthGate>
       <div className="flex h-dvh flex-col">
         <main className="relative flex-1 overflow-hidden">
           {route === 'karte' && <MapPage />}
@@ -50,6 +52,7 @@ export default function App() {
           ))}
         </nav>
       </div>
+      </AuthGate>
     </ToastProvider>
   )
 }

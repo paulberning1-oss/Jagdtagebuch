@@ -41,6 +41,22 @@ Diese Adresse in Safari auf dem iPhone öffnen. Safari warnt vor dem Zertifikat
 Auf GitHub liegt nur der Programmcode – deine Revierdaten bleiben im Browser
 deines Handys.
 
+## Konto: Daten in der Cloud sichern (Supabase)
+
+Damit alles unter deinem Namen gespeichert ist und auf jedem Gerät gleich aussieht:
+
+1. Auf [supabase.com](https://supabase.com) kostenlos ein Projekt anlegen (Region Frankfurt).
+2. **SQL Editor → New query**: Inhalt von `supabase/schema.sql` einfügen → **Run**.
+3. **Authentication → Sign In / Providers → Email**: „Confirm email“ ausschalten.
+4. **Project Settings → API Keys**: „Project URL“ und „anon / publishable key“ in die `.env` eintragen
+   (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, Vorlage: `.env.example`). Den *secret/service_role*-Key nie verwenden.
+5. Für GitHub Pages dieselben zwei Werte als Repository-Secrets anlegen (Settings → Secrets and variables → Actions).
+   Damit hält auch der Workflow „Supabase wach halten“ das kostenlose Projekt wach.
+6. App öffnen → **Neues Konto** → Name, E-Mail, Passwort. Unter „Mehr → Mein Konto“ siehst du, ob alles gesichert ist.
+
+Tipp: Solange nur du die App nutzen sollst, in Supabase unter **Authentication → Sign In / Providers**
+„Allow new users to sign up“ ausschalten, sobald dein Konto angelegt ist.
+
 ## Reviergrenze aus einem Foto übertragen
 
 Karte → **Hinzufügen → „Aus Foto einer Revierkarte übertragen“**. Das Foto wird
