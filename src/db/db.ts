@@ -14,8 +14,10 @@ export interface Facility {
   geometry: Point | LineString | Polygon
   /** Blickrichtung in Grad (0 = Nord, 90 = Ost) */
   bearing?: number | null
-  /** Breite des Schussfelds in Grad */
+  /** Breite des Schussfelds in Grad (360 = rundum) */
   fieldWidth?: number | null
+  /** Reichweite des Schussfelds in Metern */
+  fieldRange?: number | null
   notes: string
   photoIds: string[]
   /** true = gehört zu den Testdaten (Beispielrevier) */

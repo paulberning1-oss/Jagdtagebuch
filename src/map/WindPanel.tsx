@@ -6,6 +6,7 @@ import { db } from '../db/db'
 import { useSetting } from '../db/settings'
 import { typeInfo } from '../domain/facilityTypes'
 import { analyzeScent, type ScentMessage } from '../domain/scent'
+import { standFacing } from '../domain/shootingField'
 import { COMPASS_8, compass16, fromPos, type LatLng } from '../lib/geo'
 import { eveningStart, morningStart } from '../lib/sun'
 import { fmtDateTime, fromBerlinLocal, toBerlinLocal } from '../lib/time'
@@ -88,7 +89,7 @@ export function WindPanel({
     return analyzeScent(
       {
         stand: standPos,
-        standBearing: stand.bearing,
+        standBearing: standFacing(stand),
         windFrom,
         windSpeed: manual == null && wind.status === 'ok' ? wind.wind.speed : null,
         gusts: manual == null && wind.status === 'ok' ? wind.wind.gusts : null,

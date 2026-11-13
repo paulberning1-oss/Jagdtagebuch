@@ -9,6 +9,7 @@ import { angleDiff, bearing, distance, fromPos, type LatLng } from '../lib/geo'
 import type { FacilityType } from './facilityTypes'
 import type { DayPeriod, Hunt, HuntEnv, Sighting } from './hunt'
 import { analyzeScent, CALM_WIND_KMH } from './scent'
+import { shootingField } from './shootingField'
 import { periodOf } from './sightings'
 
 // ---------- Wildarten-Profile ----------
@@ -126,7 +127,7 @@ export const RULES: RuleDef[] = [
   { id: 'luftdruck', label: 'Luftdruck', description: 'Steigender oder hoher Luftdruck: Wild bewegt sich ruhig. Stark fallender Luftdruck (Wetterumschwung): eher unruhig.' },
   { id: 'niederschlag', label: 'Regen', description: 'Bei Regen weniger Anblick. Nach Regen zieht Wild oft früh und gern aus.' },
   { id: 'sturm', label: 'Sturm & Böen', description: 'Bei viel Wind ist Wild unruhig, hört schlecht und bleibt oft in der Deckung.' },
-  { id: 'umfeld', label: 'Umfeld des Sitzes', description: 'Liegen Äsung, Feld, Kirrung, Salzlecke oder Wechsel der Zielwildart im Schussfeld (bis 250 m)?' },
+  { id: 'umfeld', label: 'Umfeld des Sitzes', description: 'Liegen Äsung, Feld, Kirrung, Salzlecke oder Wechsel der Zielwildart im Schussfeld des Sitzes (ohne eingetragenes Schussfeld: rundum bis 250 m)?' },
   { id: 'jahreszeit', label: 'Jahreszeit', description: 'Besonders gute Zeiten der Wildart (z. B. Blattzeit, Brunft, Sauen im Mais).' },
   { id: 'anblicke', label: 'Letzte Anblicke', description: 'Wurde die Zielwildart in den letzten 6 Wochen nahe am Sitz (bis 300 m) zur gleichen Tageszeit gesehen?' },
   { id: 'ruhe', label: 'Ruhe am Sitz', description: 'Wurde der Sitz gerade erst besetzt? Häufiges Ansitzen beunruhigt das Wild.' },
@@ -176,12 +177,17 @@ const DAY = 86400000
 export const windFromOf = (env: HuntEnv) => env.weather?.windDirectionAvg ?? env.weather?.windDirection ?? null
 export const windSpeedOf = (env: HuntEnv) => env.weather?.windSpeedAvg ?? env.weather?.windSpeed ?? null
 
-/** Liegt ein Punkt im Blickfeld des Sitzes? (ohne Blickrichtung: rundum) */
-function inView(stand: Facility, from: LatLng, p: LatLng, maxM: number) {
-  if (distance(from, p) > maxM) return false
-  if (stand.bearing == null) return true
-  const half = Math.max(30, (stand.fieldWidth ?? 90) / 2)
-  return angleDiff(bearing(from, p), stand.bearing) <= half
+/**
+ * Liegt ein Punkt im Schussfeld des Sitzes? Nutzt Winkel und Reichweite des Schussfelds
+ * (mind. ±30° und 50 m Spielraum, weil Flächen oft knapp daneben beginnen).
+ * Ohne Schussfeld: rundum bis 250 m.
+ */
+function inView(stand: Facility, from: LatLng, p: LatLng) {
+  const field = shootingField(stand)
+  if (!field) return distance(from, p) <= 250
+  if (distance(from, p) > field.range + 50) return false
+  if (field.round) return true
+  return angleDiff(bearing(from, p), field.mid) <= Math.max(30, field.width / 2)
 }
 
 function samplePoints(f: Facility): LatLng[] {
@@ -211,11 +217,14 @@ export function evaluateRules(stand: Facility, ctx: RuleContext): Reason[] {
 
   // --- Wind & Witterung ---
   const windFrom = windFromOf(env)
+  const field = shootingField(stand)
+  // Bei „Rundum“ gibt es kein vorn/hinten
+  const facing = field && !field.round ? field.mid : null
   if (windFrom != null) {
     const scent = analyzeScent(
       {
         stand: pos,
-        standBearing: stand.bearing,
+        standBearing: facing,
         windFrom,
         windSpeed: windSpeedOf(env),
         gusts: w?.gustsMax ?? null,
@@ -233,8 +242,8 @@ export function evaluateRules(stand: Facility, ctx: RuleContext): Reason[] {
       if (aesung.length) add('wind', -5, aesung[0].text)
       else add('wind', 8, scent.messages.find((m) => m.severity === 'good' && !m.text.includes('von vorn'))?.text ?? 'Witterung zieht nicht über bekannte Wechsel oder Einstände.')
     }
-    if (stand.bearing != null) {
-      const d = angleDiff(windFrom, stand.bearing)
+    if (facing != null) {
+      const d = angleDiff(windFrom, facing)
       if (d <= 45) add('wind', 8, 'Wind kommt von vorn – Witterung zieht vom Schussfeld weg.')
       else if (d >= 135) add('wind', -15, 'Wind kommt von hinten – Witterung zieht ins Schussfeld.')
     }
@@ -279,7 +288,7 @@ export function evaluateRules(stand: Facility, ctx: RuleContext): Reason[] {
 
   // --- Umfeld ---
   const nearby = ctx.facilities.filter(
-    (f) => f.id !== stand.id && prof.attractors.includes(f.type) && samplePoints(f).some((p) => inView(stand, pos, p, 250)),
+    (f) => f.id !== stand.id && prof.attractors.includes(f.type) && samplePoints(f).some((p) => inView(stand, pos, p)),
   )
   if (nearby.length) {
     const names = nearby.slice(0, 3).map((f) => f.name || f.type)

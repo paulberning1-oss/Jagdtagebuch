@@ -9,6 +9,7 @@ import { savePhoto } from '../lib/image'
 import { navigate } from '../lib/router'
 import { useRunningHunt } from '../journal/hooks'
 import { startHunt } from '../journal/huntActions'
+import { ShootingFieldEditor } from './ShootingFieldEditor'
 
 export function FacilityEditor({
   id,
@@ -134,10 +135,12 @@ export function FacilityEditor({
       </Field>
       {size && <p className="-mt-2 mb-4 text-ink-dim">Größe: {size}</p>}
 
-      {info.hasBearing && (
+      {info.isStand && <ShootingFieldEditor f={draft} update={update} />}
+
+      {info.hasBearing && !info.isStand && (
         <div className="mb-4">
           <span className="label">
-            {info.isStand ? 'Blickrichtung (Mitte des Schussfelds)' : 'Blickrichtung'}
+            Blickrichtung
             {draft.bearing != null && `: ${Math.round(draft.bearing)}° ${compass16(draft.bearing)}`}
           </span>
           <div className="grid grid-cols-4 gap-2">
@@ -170,20 +173,6 @@ export function FacilityEditor({
             </button>
           </div>
         </div>
-      )}
-
-      {info.isStand && draft.bearing != null && (
-        <Field label={`Breite des Schussfelds: ${draft.fieldWidth ?? 60}°`}>
-          <input
-            type="range"
-            className="h-10 w-full accent-[#d4a72c]"
-            min={20}
-            max={180}
-            step={10}
-            value={draft.fieldWidth ?? 60}
-            onChange={(e) => update({ fieldWidth: Number(e.target.value) })}
-          />
-        </Field>
       )}
 
       <Field label="Notizen">

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Circle, CircleMarker, Marker, Polygon, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import type { Boundary, Facility } from '../db/db'
 import { typeInfo } from '../domain/facilityTypes'
+import { shootingField, shootingFieldPolygon } from '../domain/shootingField'
 import { fromPos, sector, type LatLng } from '../lib/geo'
 import { fetchGoogleAttribution } from './googleTiles'
 import { providerById, type TileProvider } from './providers'
@@ -224,18 +225,26 @@ function FacilityPoint({
 }) {
   const info = typeInfo(f.type)
   const icon = useMemo(() => markerIcon(f, selected, highlighted), [f, selected, highlighted])
+  // Sitze: Schussfeld (Sektor oder rundum) mit Reichweite; Wildkamera: kleiner Blickkegel
   const wedge = useMemo(() => {
+    if (info.isStand) {
+      const field = shootingField(f)
+      return field ? shootingFieldPolygon(field, pos) : null
+    }
     if (f.bearing == null || !info.hasBearing) return null
-    const isCam = f.type === 'wildkamera'
-    return sector(pos, f.bearing, isCam ? 50 : (f.fieldWidth ?? 60), isCam ? 40 : 120)
-  }, [f.bearing, f.fieldWidth, f.type, info.hasBearing, pos])
+    return sector(pos, f.bearing, 50, 40)
+  }, [f, info.isStand, info.hasBearing, pos])
   return (
     <>
       {wedge && (
         <Polygon
           positions={wedge}
           interactive={false}
-          pathOptions={{ color: info.color, weight: 1, opacity: 0.6, fillOpacity: 0.12, dashArray: '4 4' }}
+          pathOptions={
+            info.isStand
+              ? { color: info.color, weight: 2, opacity: selected ? 1 : 0.85, fillOpacity: selected ? 0.25 : 0.15 }
+              : { color: info.color, weight: 1, opacity: 0.6, fillOpacity: 0.12, dashArray: '4 4' }
+          }
         />
       )}
       <Marker position={pos} icon={icon} interactive={interactive} eventHandlers={{ click: onClick }}>

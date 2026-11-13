@@ -9,6 +9,7 @@ import { revierBounds } from '../db/ownData'
 import { getSetting, setSetting, useSetting } from '../db/settings'
 import { DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/demoRevier'
 import { typeInfo, type FacilityType } from '../domain/facilityTypes'
+import { DEFAULT_WIDTH } from '../domain/shootingField'
 import { fromPos, toPos, type LatLng } from '../lib/geo'
 import { newId } from '../lib/id'
 import { savePhoto } from '../lib/image'
@@ -172,7 +173,7 @@ export default function MapPage() {
       name: defaultName(type, facilities ?? []),
       geometry: { type: 'Point', coordinates: toPos(p) },
       bearing: null,
-      fieldWidth: typeInfo(type).isStand ? 60 : null,
+      fieldWidth: typeInfo(type).isStand ? DEFAULT_WIDTH : null,
       notes: '',
       photoIds: [],
       createdAt: now,

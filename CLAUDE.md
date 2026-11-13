@@ -93,6 +93,9 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
   Neue Geräte-Einstellungen (nur dieses Gerät) → in `DEVICE_SETTINGS`. Binärdaten (Blobs) nur in `photos` – sonst Sync erweitern.
 - Zielgerät **iPhone** (Safari): `navigator.storage.persist()` anfragen; Backup-Erinnerung in Phase 5 wichtig.
 - Revier ist **flach** → keine Thermik-/Höhenlogik.
+- Schussfeld (`src/domain/shootingField.ts`, Editor `src/map/ShootingFieldEditor.tsx`): gespeichert als `bearing` (Mitte)
+  + `fieldWidth` (Breite, 360 = rundum) + `fieldRange` (m, Standard 150). Start-/Endwinkel sind nur Darstellung
+  (`fromStartEnd`) → alte Sitze ohne Umbau gültig. Bei „Rundum“ kein Wind von vorn/hinten (`standFacing`).
 - Witterungskegel: Standard 300 m lang, 40° Öffnung (einstellbar). Warnung bei Wechsel, Kirrung,
   Salzlecke, Suhle, Dickung, Einstand; Hinweis bei Äsungsfläche. Zusätzlich Wind relativ zur Blickrichtung.
 - Wind < 4 km/h gilt als „umlaufend“ (Hinweis), Böen ≥ 40 km/h als Unruhe-Hinweis.
