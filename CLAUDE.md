@@ -102,6 +102,11 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
   `FacilityType` ist deshalb `string`; `typeInfo` unbekannter Kategorien → „Unbekannte Kategorie“, nie Sitz.
   Eine Kategorie kann mehrere Geometrien erlauben (`kinds`). Objekte: optional eigene `color`, `crop`.
   Kategorie nur löschbar, wenn kein Objekt sie nutzt. Störquelle bis 200 m → Abzug in Regel „Ruhe“.
+- Anmarschwege (`src/domain/approach.ts`): Objekt mit Kategorie `anmarsch` (versteckt im Hinzufügen-Menü, `hidden`)
+  + `standId`. Angelegt aus dem Sitz-Dialog; letzter Punkt wird an den Sitz gehängt (`attachToStand`).
+  Check läuft den Weg in 25-m-Schritten ab: Witterungskegel über warn/hint-Objekte und ins Schussfeld (letzte 30 m ausgenommen),
+  windunabhängig: Wechsel kreuzen, durch Dickung/Einstand, durchs Schussfeld. Bewertung warn 3 / Hinweis 1, bester Weg zuerst.
+  Anzeige im Wind-Panel (Abschnitt „Anmarschwege“), Kegel entlang des Wegs auf der Karte (`RouteConeLayer`).
 - Witterungskegel: Standard 300 m lang, 40° Öffnung (einstellbar). Warnung bei Wechsel, Kirrung,
   Salzlecke, Suhle, Dickung, Einstand; Hinweis bei Äsungsfläche. Zusätzlich Wind relativ zur Blickrichtung.
 - Wind < 4 km/h gilt als „umlaufend“ (Hinweis), Böen ≥ 40 km/h als Unruhe-Hinweis.

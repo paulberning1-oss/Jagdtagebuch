@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Camera, Move, PenLine, Play, Trash2, Wind } from 'lucide-react'
+import { Camera, Footprints, Move, PenLine, Play, Plus, Trash2, Wind } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Field, Sheet, useToast } from '../components/ui'
 import { db, type Facility } from '../db/db'
@@ -17,17 +17,26 @@ export function FacilityEditor({
   onMove,
   onRedraw,
   onWind,
+  onDrawRoute,
+  onOpenFacility,
 }: {
   id: string
   onClose: () => void
   onMove: (f: Facility) => void
   onRedraw: (f: Facility) => void
   onWind: (f: Facility) => void
+  /** Neuen Anmarschweg zu diesem Sitz einzeichnen */
+  onDrawRoute: (stand: Facility) => void
+  /** Anderes Objekt öffnen (z. B. einen Anmarschweg aus der Liste des Sitzes) */
+  onOpenFacility: (f: Facility) => void
 }) {
   const stored = useLiveQuery(() => db.facilities.get(id), [id])
   const [draft, setDraft] = useState<Facility | null>(null)
   const toast = useToast()
   const running = useRunningHunt()
+  // Anmarschwege dieses Sitzes bzw. alle Sitze (für „Gehört zu Sitz“ bei einem Weg)
+  const routes = useLiveQuery(() => db.facilities.filter((f) => f.type === 'anmarsch' && f.standId === id).toArray(), [id]) ?? []
+  const stands = useLiveQuery(async () => (await db.facilities.toArray()).filter((f) => typeInfo(f.type).isStand), []) ?? []
 
   // Entwurf aus der Datenbank übernehmen. Danach nur noch die Geometrie
   // nachziehen (z. B. nach "Position verschieben"), damit beim Tippen nichts springt.
@@ -79,7 +88,7 @@ export function FacilityEditor({
     const ha = polygonArea(draft.geometry.coordinates[0].map(fromPos)) / 10000
     size = `${ha.toLocaleString('de-DE', { maximumFractionDigits: 2 })} ha`
   } else if (draft.geometry.type === 'LineString') {
-    size = `${Math.round(lineLength(draft.geometry.coordinates.map(fromPos)))} m lang`
+    size = `${Math.round(lineLength(draft.geometry.coordinates.map(fromPos)))} m`
   }
 
   return (
@@ -124,6 +133,46 @@ export function FacilityEditor({
       <Field label="Name">
         <input className="input" value={draft.name} onChange={(e) => update({ name: e.target.value })} placeholder={info.label} />
       </Field>
+      {draft.type === 'anmarsch' && (
+        <>
+          <Field label="Gehört zu Sitz">
+            <select className="input" value={draft.standId ?? ''} onChange={(e) => update({ standId: e.target.value || null })}>
+              <option value="">– kein Sitz –</option>
+              {stands.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name || typeInfo(s.type).label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {draft.standId && (
+            <button className="btn btn-primary mb-4 w-full" onClick={() => onWind(draft)}>
+              <Wind /> Wind-Check für diesen Weg
+            </button>
+          )}
+        </>
+      )}
+      {info.isStand && (
+        <div className="mb-4 rounded-2xl border border-line p-3">
+          <span className="label">Anmarschwege</span>
+          {!routes.length && <p className="mb-2 text-sm text-ink-dim">Noch kein Weg. Zeichne ein, wie du zum Sitz gehst – die App prüft dann den Wind entlang des Wegs.</p>}
+          <div className="mb-2 grid gap-2">
+            {routes.map((r) => (
+              <button key={r.id} className="btn !justify-start !px-3 text-left !text-base" onClick={() => onOpenFacility(r)}>
+                <Footprints className="shrink-0 text-ink-dim" />
+                <span className="flex-1 truncate">{r.name || 'Anmarschweg'}</span>
+                <span className="text-sm font-normal text-ink-dim">
+                  {r.geometry.type === 'LineString' ? `${Math.round(lineLength(r.geometry.coordinates.map(fromPos)))} m` : ''}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button className="btn w-full" onClick={() => onDrawRoute(draft)}>
+            <Plus /> Anmarschweg einzeichnen
+          </button>
+        </div>
+      )}
+      {draft.type !== 'anmarsch' && (
       <Field label="Kategorie">
         <select className="input" value={draft.type} onChange={(e) => update({ type: e.target.value as FacilityType })}>
           {/* Nur Kategorien, die zur Geometrie passen (Punkt / Linie / Fläche); Sitze bleiben Sitze */}
@@ -137,7 +186,8 @@ export function FacilityEditor({
             ))}
         </select>
       </Field>
-      {size && <p className="-mt-2 mb-4 text-ink-dim">Größe: {size}</p>}
+      )}
+      {size && <p className="-mt-2 mb-4 text-ink-dim">{draft.geometry.type === 'LineString' ? 'Länge' : 'Größe'}: {size}</p>}
 
       {info.hasCrop && (
         <Field label="Feldfrucht">

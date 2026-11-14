@@ -24,6 +24,8 @@ export interface Facility {
   color?: string | null
   /** Feldfrucht (bei Agrarflächen) */
   crop?: string | null
+  /** Anmarschweg: zu welchem Sitz er gehört */
+  standId?: string | null
   /** true = gehört zu den Testdaten (Beispielrevier) */
   demo?: boolean
   createdAt: number

@@ -9,6 +9,7 @@ import { revierBounds } from '../db/ownData'
 import { getSetting, setSetting, useSetting } from '../db/settings'
 import { DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/demoRevier'
 import { typeInfo, type FacilityType } from '../domain/facilityTypes'
+import { attachToStand } from '../domain/approach'
 import { DEFAULT_WIDTH } from '../domain/shootingField'
 import { fromPos, toPos, type LatLng } from '../lib/geo'
 import { newId } from '../lib/id'
@@ -22,6 +23,7 @@ import {
   BaseLayer,
   BoundaryLayer,
   ConeLayer,
+  RouteConeLayer,
   DraftLayer,
   FacilityLayer,
   FlyTo,
@@ -37,7 +39,7 @@ import { WindPanel, type ConeOverlay } from '../map/WindPanel'
 type Mode =
   | { t: 'view' }
   | { t: 'place'; type: FacilityType; moveId?: string }
-  | { t: 'draw'; kind: 'line' | 'area' | 'boundary'; type?: FacilityType; points: LatLng[]; replaceId?: string }
+  | { t: 'draw'; kind: 'line' | 'area' | 'boundary'; type?: FacilityType; points: LatLng[]; replaceId?: string; standId?: string }
   /** Revier-Foto ausrichten */
   | { t: 'overlay'; id: string; corners: LatLng[]; opacity: number; handleMode: HandleMode }
 
@@ -49,7 +51,7 @@ type Panel =
   | { t: 'list' }
   | { t: 'edit'; id: string }
   | { t: 'boundary'; id: string }
-  | { t: 'wind'; standId: string | null }
+  | { t: 'wind'; standId: string | null; routeId?: string }
 
 type FlyTarget = { pos: LatLng; zoom?: number; bounds?: L.LatLngBoundsExpression; raise?: boolean; n: number }
 
@@ -135,7 +137,7 @@ export default function MapPage() {
     }
     if (o.fitKey !== lastConeStand.current) {
       lastConeStand.current = o.fitKey
-      setFly({ pos: o.stand, bounds: L.latLngBounds([...o.cone, o.stand]), raise: true, n: ++flyN.current })
+      setFly({ pos: o.stand, bounds: L.latLngBounds([...o.cone, o.stand, ...(o.route ?? [])]), raise: true, n: ++flyN.current })
     }
   }, [])
 
@@ -196,20 +198,27 @@ export default function MapPage() {
     const pts = mode.points
     const now = Date.now()
     if (mode.kind === 'line') {
-      if (pts.length < 2) return
-      const geometry = { type: 'LineString' as const, coordinates: pts.map(toPos) }
+      if (pts.length < 2 && !(mode.type === 'anmarsch' && pts.length >= 1)) return
+      // Anmarschweg: endet immer am Sitz
+      const routeStand = mode.type === 'anmarsch' ? facilities?.find((f) => f.id === mode.standId) : undefined
+      const linePts = routeStand?.geometry.type === 'Point' ? attachToStand(pts, fromPos(routeStand.geometry.coordinates)) : pts
+      if (linePts.length < 2) return
+      const geometry = { type: 'LineString' as const, coordinates: linePts.map(toPos) }
       if (mode.replaceId) {
         await db.facilities.update(mode.replaceId, { geometry, updatedAt: now })
         setPanel({ t: 'edit', id: mode.replaceId })
       } else {
         const id = newId()
+        const routeCount = (facilities ?? []).filter((f) => f.type === 'anmarsch' && f.standId === mode.standId).length
         await db.facilities.add({
           id,
           type: mode.type!,
-          name: defaultName(mode.type!, facilities ?? []),
+          name: routeStand ? `Anmarsch ${routeStand.name || 'Sitz'}${routeCount ? ` ${routeCount + 1}` : ''}` : defaultName(mode.type!, facilities ?? []),
           geometry,
           notes: '',
           photoIds: [],
+          standId: routeStand?.id ?? null,
+          demo: routeStand?.demo,
           createdAt: now,
           updatedAt: now,
         })
@@ -356,10 +365,13 @@ export default function MapPage() {
         ? mode.kind === 'boundary'
           ? 'Tippe die Eckpunkte der Reviergrenze nacheinander an'
           : mode.kind === 'line'
-            ? 'Tippe den Verlauf des Wechsels Punkt für Punkt an'
+            ? mode.type === 'anmarsch'
+              ? 'Tippe den Anmarschweg vom Start an – der Sitz wird am Ende angehängt'
+              : `Tippe den Verlauf (${typeInfo(mode.type!).label}) Punkt für Punkt an`
             : `Tippe die Eckpunkte der Fläche (${typeInfo(mode.type!).label}) an`
         : null
-  const canFinish = mode.t === 'draw' && mode.points.length >= (mode.kind === 'line' ? 2 : 3)
+  const minPoints = mode.t !== 'draw' ? 0 : mode.kind !== 'line' ? 3 : mode.type === 'anmarsch' ? 1 : 2
+  const canFinish = mode.t === 'draw' && mode.points.length >= minPoints
 
   return (
     <div className="relative h-full">
@@ -400,6 +412,7 @@ export default function MapPage() {
           showLabels={zoom >= 16}
           onSelect={onSelectFacility}
         />
+        {cone?.routeCones && <RouteConeLayer cones={cone.routeCones} route={cone.route ?? []} />}
         {cone && <ConeLayer cone={cone.cone} stand={cone.stand} />}
         {mode.t === 'draw' && <DraftLayer points={mode.points} closed={mode.kind !== 'line'} />}
         {loc && <LocationLayer pos={loc.pos} accuracy={loc.accuracy} />}
@@ -634,9 +647,24 @@ export default function MapPage() {
           }}
           onRedraw={(f) => {
             setPanel({ t: 'none' })
-            setMode({ t: 'draw', kind: f.geometry.type === 'LineString' ? 'line' : 'area', type: f.type, points: [], replaceId: f.id })
+            setMode({
+              t: 'draw',
+              kind: f.geometry.type === 'LineString' ? 'line' : 'area',
+              type: f.type,
+              points: [],
+              replaceId: f.id,
+              standId: f.standId ?? undefined,
+            })
           }}
-          onWind={(f) => setPanel({ t: 'wind', standId: f.id })}
+          onWind={(f) =>
+            f.type === 'anmarsch' ? setPanel({ t: 'wind', standId: f.standId ?? null, routeId: f.id }) : setPanel({ t: 'wind', standId: f.id })
+          }
+          onDrawRoute={(stand) => {
+            setPanel({ t: 'none' })
+            setMode({ t: 'draw', kind: 'line', type: 'anmarsch', points: [], standId: stand.id })
+            toast('Tippe den Weg vom Auto/Weg zum Sitz an – der Sitz wird am Ende automatisch angehängt')
+          }}
+          onOpenFacility={focusFacility}
         />
       )}
       {panel.t === 'boundary' && (
@@ -652,6 +680,7 @@ export default function MapPage() {
       {panel.t === 'wind' && (
         <WindPanel
           initialStandId={panel.standId}
+          initialRouteId={panel.routeId}
           onOverlay={onConeOverlay}
           onFocusStand={(p) => flyTo(p, 16, true)}
           onClose={() => setPanel({ t: 'none' })}

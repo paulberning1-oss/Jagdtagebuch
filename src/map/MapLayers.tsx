@@ -327,6 +327,20 @@ export function ConeLayer({ cone, stand }: { cone: LatLng[]; stand: LatLng }) {
   )
 }
 
+/** Witterungskegel entlang eines Anmarschwegs + der Weg selbst hervorgehoben */
+export function RouteConeLayer({ cones, route }: { cones: LatLng[][]; route: LatLng[] }) {
+  return (
+    <>
+      {cones.map((c, i) => (
+        <Polygon key={i} positions={c} interactive={false} pathOptions={{ color: '#ef6b4a', weight: 0, fillColor: '#ef6b4a', fillOpacity: 0.12 }} />
+      ))}
+      {route.length > 1 && (
+        <Polyline positions={route} interactive={false} pathOptions={{ color: '#ffffff', weight: 6, opacity: 0.95, dashArray: '2 10', lineCap: 'round' }} />
+      )}
+    </>
+  )
+}
+
 // ---------- Eigener Standort ----------
 
 export function LocationLayer({ pos, accuracy }: { pos: LatLng; accuracy: number }) {

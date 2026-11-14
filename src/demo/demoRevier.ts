@@ -46,6 +46,18 @@ const pt = (x: number, y: number): Point => ({ type: 'Point', coordinates: P(x, 
 const line = (...pts: [number, number][]): LineString => ({ type: 'LineString', coordinates: pts.map(([x, y]) => P(x, y)) })
 
 export function buildDemoFacilities(): Facility[] {
+  const list = buildDemoObjects()
+  // Anmarschwege: zwei zum Kirrungssitz (einer absichtlich ungünstig über die Kirrung), einer zur Eichenkanzel
+  const id = (name: string) => list.find((x) => x.name === name)!.id
+  list.push(
+    f('anmarsch', 'Anmarsch von Norden', line([320, 260], [290, 60], [320, -120]), { standId: id('Kirrungssitz Buche') }),
+    f('anmarsch', 'Anmarsch über die Kirrung', line([660, -470], [450, -280], [320, -120]), { standId: id('Kirrungssitz Buche') }),
+    f('anmarsch', 'Anmarsch vom Rapsfeld', line([-60, -420], [-10, -100], [0, 150]), { standId: id('Eichenkanzel') }),
+  )
+  return list
+}
+
+function buildDemoObjects(): Facility[] {
   return [
     // Sitze
     f('kanzel', 'Eichenkanzel', pt(0, 150), { bearing: 35, fieldWidth: 90, notes: 'Blick auf den Wildacker. Bei Westwind am besten.' }),

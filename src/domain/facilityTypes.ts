@@ -41,6 +41,8 @@ export interface FacilityTypeInfo {
   dash?: string
   /** Eigene, in der App angelegte Kategorie */
   custom?: boolean
+  /** Nicht im allgemeinen Hinzufügen-Menü (z. B. Anmarschweg – wird beim Sitz angelegt) */
+  hidden?: boolean
 }
 
 type Def = Omit<FacilityTypeInfo, 'kind' | 'kinds'> & { kinds: GeometryKind[] }
@@ -64,6 +66,7 @@ export const FACILITY_TYPES: FacilityTypeInfo[] = [
   def({ type: 'gewaesser', label: 'Fluss / Bach', kinds: ['line'], glyph: '', color: '#4fa3e0', isStand: false, hasBearing: false, scent: null, phrase: 'den Bach' }),
   def({ type: 'graben', label: 'Graben', kinds: ['line'], glyph: '', color: '#7fc4e8', isStand: false, hasBearing: false, scent: null, phrase: 'den Graben', dash: '6 4' }),
   def({ type: 'weg', label: 'Weg', kinds: ['line'], glyph: '', color: '#e8dcc0', isStand: false, hasBearing: false, scent: null, phrase: 'den Weg' }),
+  def({ type: 'anmarsch', label: 'Anmarschweg', kinds: ['line'], glyph: '', color: '#f4f1e8', isStand: false, hasBearing: false, scent: null, phrase: 'den Anmarschweg', dash: '2 9', hidden: true }),
   def({ type: 'zaun', label: 'Zaun / eingezäunte Fläche', kinds: ['line', 'area'], glyph: '', color: '#b0bec5', isStand: false, hasBearing: false, scent: null, phrase: 'den Zaun', dash: '2 6' }),
   // Flächen
   def({ type: 'aesung', label: 'Äsungsfläche / Wildacker', kinds: ['area'], glyph: '', color: '#9ccc65', isStand: false, hasBearing: false, scent: 'hint', phrase: 'die Äsungsfläche' }),
@@ -135,7 +138,8 @@ export function typeInfo(t: FacilityType): FacilityTypeInfo {
   return byType.get(t) ?? unknown(t)
 }
 
-export const typesOfKind = (k: GeometryKind) => all.filter((t) => t.kinds.includes(k))
+/** Kategorien für eine Geometrie (ohne versteckte wie den Anmarschweg) */
+export const typesOfKind = (k: GeometryKind) => all.filter((t) => t.kinds.includes(k) && !t.hidden)
 
 /** Geometrie-Art eines Objekts */
 export const kindOfGeometry = (g: { type: string }): GeometryKind => (g.type === 'Point' ? 'point' : g.type === 'LineString' ? 'line' : 'area')
