@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AlertTriangle, CheckCircle2, Info, Loader2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CheckCircle2, Info, Loader2, RefreshCw } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Sheet } from '../components/ui'
 import { db } from '../db/db'
@@ -35,6 +35,7 @@ export function WindPanel({
   initialRouteId,
   onOverlay,
   onFocusStand,
+  onBackToRevier,
   onClose,
 }: {
   initialStandId: string | null
@@ -42,6 +43,8 @@ export function WindPanel({
   initialRouteId?: string
   onOverlay: (o: ConeOverlay | null) => void
   onFocusStand: (p: LatLng) => void
+  /** Zurück zur Wind-Ansicht des ganzen Reviers */
+  onBackToRevier?: () => void
   onClose: () => void
 }) {
   const facilities = useLiveQuery(() => db.facilities.toArray(), []) ?? []
@@ -155,6 +158,11 @@ export function WindPanel({
 
   return (
     <Sheet title={stand ? `Wind · ${stand.name || typeInfo(stand.type).label}` : 'Wind & Witterung'} onClose={onClose}>
+      {onBackToRevier && (
+        <button className="btn mb-3 w-full !min-h-12 !text-base" onClick={onBackToRevier}>
+          <ArrowLeft /> Ganzes Revier
+        </button>
+      )}
       <div className="card mb-3">
         {manual != null ? (
           <div className="flex items-center gap-2">

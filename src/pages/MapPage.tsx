@@ -24,6 +24,7 @@ import {
   BaseLayer,
   BoundaryLayer,
   ConeLayer,
+  RevierWindLayer,
   RouteConeLayer,
   DraftLayer,
   FacilityLayer,
@@ -35,6 +36,7 @@ import {
 import { AddMenu, BoundarySheet, defaultName, FacilityList, LayerMenu, type AddChoice } from '../map/Menus'
 import { FALLBACK_PROVIDER } from '../map/providers'
 import { WindPanel, type ConeOverlay } from '../map/WindPanel'
+import { RevierWindPanel, type RevierWindOverlay } from '../map/RevierWindPanel'
 
 /** Was passiert beim nächsten Tipp auf die Karte? */
 type Mode =
@@ -53,6 +55,8 @@ type Panel =
   | { t: 'edit'; id: string }
   | { t: 'boundary'; id: string }
   | { t: 'wind'; standId: string | null; routeId?: string }
+  /** Wind über dem ganzen Revier */
+  | { t: 'windRevier' }
 
 type FlyTarget = { pos: LatLng; zoom?: number; bounds?: L.LatLngBoundsExpression; raise?: boolean; n: number }
 
@@ -89,6 +93,7 @@ export default function MapPage() {
   const [zoom, setZoom] = useState(15)
   const [fly, setFly] = useState<FlyTarget | null>(null)
   const [cone, setCone] = useState<ConeOverlay | null>(null)
+  const [revierWind, setRevierWind] = useState<RevierWindOverlay | null>(null)
   const [loc, setLoc] = useState<{ pos: LatLng; accuracy: number } | null>(null)
   const flyN = useRef(0)
   const lastConeStand = useRef<string | null>(null)
@@ -312,7 +317,7 @@ export default function MapPage() {
 
   // ---------- Auswahl auf der Karte ----------
   const onSelectFacility = (f: Facility) => {
-    if (panel.t === 'wind' && typeInfo(f.type).isStand) {
+    if ((panel.t === 'wind' || panel.t === 'windRevier') && typeInfo(f.type).isStand) {
       setPanel({ t: 'wind', standId: f.id })
       return
     }
@@ -414,6 +419,7 @@ export default function MapPage() {
           showLabels={zoom >= 16}
           onSelect={onSelectFacility}
         />
+        {revierWind && panel.t === 'windRevier' && <RevierWindLayer {...revierWind} />}
         {cone?.routeCones && <RouteConeLayer cones={cone.routeCones} route={cone.route ?? []} />}
         {cone && <ConeLayer cone={cone.cone} stand={cone.stand} />}
         {mode.t === 'draw' && <DraftLayer points={mode.points} closed={mode.kind !== 'line'} />}
@@ -554,8 +560,8 @@ export default function MapPage() {
             <List />
           </button>
           <button
-            className={`btn-round ${panel.t === 'wind' ? '!bg-accent !text-accent-ink' : ''}`}
-            onClick={() => setPanel({ t: 'wind', standId: null })}
+            className={`btn-round ${panel.t === 'wind' || panel.t === 'windRevier' ? '!bg-accent !text-accent-ink' : ''}`}
+            onClick={() => setPanel({ t: 'windRevier' })}
             aria-label="Wind & Witterung"
           >
             <Wind />
@@ -703,6 +709,23 @@ export default function MapPage() {
           initialRouteId={panel.routeId}
           onOverlay={onConeOverlay}
           onFocusStand={(p) => flyTo(p, 16, true)}
+          onBackToRevier={() => setPanel({ t: 'windRevier' })}
+          onClose={() => setPanel({ t: 'none' })}
+        />
+      )}
+      {panel.t === 'windRevier' && (
+        <RevierWindPanel
+          onOverlay={setRevierWind}
+          onFitRevier={(b) =>
+            flyToBounds(
+              [
+                [b.south, b.west],
+                [b.north, b.east],
+              ],
+              true,
+            )
+          }
+          onPickStand={(standId) => setPanel({ t: 'wind', standId })}
           onClose={() => setPanel({ t: 'none' })}
         />
       )}

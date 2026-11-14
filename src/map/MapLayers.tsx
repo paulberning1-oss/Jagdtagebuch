@@ -327,6 +327,34 @@ export function ConeLayer({ cone, stand }: { cone: LatLng[]; stand: LatLng }) {
   )
 }
 
+/**
+ * Wind über dem ganzen Revier: viele kleine Pfeile in Windrichtung (wohin er weht)
+ * und ein großes rotes Kürzel auf der Seite, aus der er kommt (z. B. „W“).
+ */
+export function RevierWindLayer({ windFrom, arrows, labelPos, letter }: { windFrom: number; arrows: LatLng[]; labelPos: LatLng; letter: string }) {
+  const arrowIcon = useMemo(() => {
+    const rot = Math.round(windFrom + 180) // Pfeil zeigt dorthin, wohin der Wind weht
+    return L.divIcon({
+      className: 'wind-arrow',
+      html: `<div style="transform:rotate(${rot}deg);width:34px;height:34px"><div class="drift"><svg width="34" height="34" viewBox="0 0 34 34"><line x1="17" y1="29" x2="17" y2="8" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/><polygon points="17,3 24,13 10,13" fill="#ffffff"/></svg></div></div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+    })
+  }, [windFrom])
+  const letterIcon = useMemo(
+    () => L.divIcon({ className: '', html: `<div class="wind-letter" style="width:72px;height:48px">${letter}</div>`, iconSize: [72, 48], iconAnchor: [36, 24] }),
+    [letter],
+  )
+  return (
+    <>
+      {arrows.map((p, i) => (
+        <Marker key={`${i}-${windFrom}`} position={p} icon={arrowIcon} interactive={false} keyboard={false} />
+      ))}
+      <Marker position={labelPos} icon={letterIcon} interactive={false} keyboard={false} zIndexOffset={1000} />
+    </>
+  )
+}
+
 /** Witterungskegel entlang eines Anmarschwegs + der Weg selbst hervorgehoben */
 export function RouteConeLayer({ cones, route }: { cones: LatLng[][]; route: LatLng[] }) {
   return (

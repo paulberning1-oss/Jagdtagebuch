@@ -147,6 +147,11 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   Sitz löschen nimmt seine Anmarschwege mit (gleiche `batch`, kommen beim Wiederherstellen mit zurück). Fotos erst beim
   endgültigen Löschen weg. Nach 30 Tagen automatisch endgültig (`purgeOldTrash` beim App-Start). „Testdaten löschen“ leert auch Demo-Einträge.
   Revier-Übersicht: „Auswählen“ → Mehrfachauswahl („alle“ je Gruppe, „Alle Beispiel-Objekte“) → „Löschen (n)“.
+- Wind-Knopf = **Wind im ganzen Revier** (`src/map/RevierWindPanel.tsx`, Logik `src/domain/revierWind.ts`, Ebene `RevierWindLayer`):
+  Karte zeigt das ganze Revier (Ausschnitt mit Rand für das Kürzel), rotes Kürzel (8 Richtungen) auf der Seite, aus der der
+  Wind kommt, weiße Pfeile (Raster innerhalb der eigenen Grenze) in Windrichtung. Darunter alle Sitze geprüft (✓/⚠ mit Grund,
+  geeignete zuerst). Sitz antippen → **Sitz-Check** (`WindPanel`, Kegel + Anmarschwege) mit „← Ganzes Revier“.
+  Sitz-Check auch direkt aus dem Sitz-Dialog („Wind & Witterung prüfen“). Wind für die Reviermitte (Open-Meteo) oder von Hand.
 - Kompass (`src/map/CompassRose.tsx`): Knopf in der rechten Kartenleiste, Rose unten rechts (über „Hinzufügen“).
   Karte ist eingenordet → N oben. Nadel = Blickrichtung des Handys (iOS `webkitCompassHeading` nach
   `DeviceOrientationEvent.requestPermission()` beim Tippen, Android `deviceorientationabsolute`). Setting `compassOpen` nur je Gerät.
