@@ -19,6 +19,41 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - [x] Phase 4: Kombinations-Assistent, Regelwerk, Statistik, ~40 Test-Ansitze
 - [ ] Phase 5: PWA/Offline, Kachel-Vorabspeicherung, JSON-Export/-Import, Jagdzeiten, Feinschliff
 
+## Laufende Erweiterung „Tagebuch, Karte und KI-Jagdassistent“ (Branch `erweiterung-ki`)
+Vom Nutzer freigegebener Plan in 8 Teilschritten. Nach jedem Teilschritt: lauffähig, Commit, kurze Testanleitung,
+dann auf „weiter“ warten. Vorhandenes erweitern statt neu bauen. Bestehende Einträge und Testdaten müssen weiter funktionieren.
+Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung änderbar), bisherige Einrichtungstypen
+**im Kategorien-System zusammengeführt**, Reihenfolge **A → B → C → D**.
+
+- [x] 1 Schussfeld: Sektor von–bis + Reichweite oder rundum, halbtransparent auf der Karte
+- [x] 2 Eigene Objekte & Kategorien (Startliste Fluss/Bach, Graben, Agrarfläche mit Feldfrucht, Neuanpflanzung, Zaun, Dickung, Einstand, Weg, Störquelle)
+- [x] 3 Anmarschwege je Sitz mit Wind-Check entlang des Wegs + Empfehlung des besseren Wegs
+- [x] (Zusatz) Kompass auf der Karte, per Knopf ein-/ausblendbar, unten rechts
+- [ ] 4 Tagebuch erweitern: Datum, von–bis, Sitz, **gewählter Anmarschweg**; automatisch (vorausgefüllt, änderbar):
+  Sonnenauf-/-untergang, Mondbeleuchtung %, Mond am Himmel, Temperatur, Wind Richtung/Stärke, Luftfeuchtigkeit,
+  Luftdruck + Tendenz, Niederschlag; **jagdliche Phase/Besonderheit** (Vorschlag aus Jagdkalender, ab Schritt 5; änderbar, eigene ergänzbar);
+  Anblick je Sichtung: Wildart, Anzahl, Geschlecht, **Altersschätzung (optional)**, Uhrzeit, Verhalten, Ort;
+  **Wildaktivität 5 Stufen** („sehr ruhig“ … „sehr rege“); Erfolg ja/nein mit Details; **Fazit** und **Fehler/nächstes Mal anders**
+  per **Spracheingabe** (Web Speech API, `de-DE`, wo unterstützt; sonst Hinweis auf iPhone-Diktierfunktion; Tippen geht immer).
+  Sterne-Bewertung bleibt als Gesamteindruck. DB-Migration nur ergänzend.
+- [ ] 5 Jagdwissen-Seite: je Wildart Jahreskalender + Verhaltenswissen (Brunft/Blattzeit/Rauschzeit, Setz-/Frischzeit,
+  Abwurf, Schieben, Fegen, Haarwechsel, Äsung je Jahreszeit, Reaktion auf Wetter/Mond/Luftdruck/Störungen, Feldfrüchte/Ernte).
+  Jeder Abschnitt Status „Vorschlag – ungeprüft“, bearbeitbar, eigene Ergänzungen (auch Wissen des Opas), auf „geprüft“ setzbar.
+  Daraus Jagdkalender → schlägt jagdliche Phase in Tagebuch und Assistent vor. **Jagd-/Schonzeiten: eigene Tabelle, nur der Nutzer pflegt sie, nie KI-erzeugt.**
+- [ ] 6 KI-Grundlage: Supabase Edge Function ruft Claude (offizielles Anthropic-SDK) auf; API-Schlüssel NUR als Supabase-Secret,
+  nie im Frontend/Repo; nur eingeloggte Nutzer; Tageslimit (einstellbar, Start 30/Tag); Modellname als Konfiguration;
+  einmalige, deutliche Datenschutz-Zustimmung in der App (Revier-/Tagebuchdaten gehen an die Anthropic API);
+  Schritt-für-Schritt-Anleitung: API-Schlüssel anlegen, als Secret hinterlegen, Ausgabenlimit setzen. Prompt-Caching für den stabilen Teil.
+- [ ] 7 KI-Ansitzempfehlung: Kontext = Datum, Zeitfenster, Wettervorhersage, Sonne/Mond, jagdliche Phase, geprüftes Jagdwissen
+  (ungeprüftes nur auf Wunsch, gekennzeichnet), Revier (Sitze mit Schussfeld, Anmarschwege, eigene Objekte, Wechsel, Flächen –
+  mit Richtungen und Entfernungen), passendste Tagebucheinträge inkl. Fazit/Fehler + Statistik, bisherige Punktbewertung;
+  Testdaten nur, wenn ausdrücklich eingeschaltet. Antwort: Sitz, Anmarschweg, Erwartung (Wildart, Uhrzeit), worauf achten, warum.
+- [ ] 8 KI-Chat zu Revier und Daten + Rückmeldung nach dem Ansitz (zu Fazit und Fehlern, konkrete Tipps).
+  System-Prompt-Regeln: nur mitgeschicktes Wissen und eigene Daten, nichts erfinden; jede Aussage kennzeichnen
+  („aus deinem Tagebuch (n Ansitze)“ / „aus dem Jagdwissen“ / „Vermutung“); offen sagen, wenn Daten nicht reichen;
+  keine Aussagen zu Jagd-/Schonzeiten oder Recht außer aus der eigenen Tabelle, bei Rechts-/Sicherheitsfragen auf
+  Jagdgesetz, Behörde oder erfahrene Jäger verweisen; Deutsch, kurz, praxisnah, Fachsprache der Jagd.
+
 ## Fachbegriffe (Jagd)
 | Begriff | Bedeutung |
 |---|---|
@@ -169,6 +204,11 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 ## Repository & Veröffentlichung
 - GitHub: `paulberning1-oss/Jagdtagebuch` (Branch `main`)
 - GitHub Pages: https://paulberning1-oss.github.io/Jagdtagebuch/ (Workflow `.github/workflows/deploy.yml`)
+- Supabase-Projekt: `https://isjgjssrjbzedqcoxcyu.supabase.co` (Region Frankfurt, Schema aus `supabase/schema.sql` ist eingespielt,
+  „Confirm email“ aus, Konto des Nutzers angelegt). URL + Publishable Key stehen nur in der lokalen `.env` (nicht im Repo)
+  bzw. als GitHub-Secrets `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`. Ohne `.env` läuft die App lokal ohne Konto.
+- Branches: `main` = veröffentlicht (Handy). Neuere Arbeit liegt auf `erweiterung-ki` (enthält auch `revier-knopf`,
+  `cloud-konto`, Phase 4 und den Veröffentlichen-Knopf); offene PRs #1 und #2 erledigen sich mit dem Veröffentlichen.
 
 ## Befehle
 - `npm run dev` – Entwicklungsserver (http://localhost:5173)
