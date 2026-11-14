@@ -3,7 +3,7 @@ import { Check, Eye, EyeOff, FileUp, Image, ListChecks, Maximize, Move, PenLine,
 import { useRef, useState } from 'react'
 import { Sheet, useToast } from '../components/ui'
 import { db, type Boundary, type Facility, type MapOverlay } from '../db/db'
-import { trashBoundaries, trashFacilities } from '../db/trash'
+import { trashBoundaries, trashFacilities, trashOverlay } from '../db/trash'
 import { allTypes, typeInfo, typesOfKind, type FacilityType, type GeometryKind } from '../domain/facilityTypes'
 import { CategoryForm } from './CategoryForm'
 import { fromPos, polygonArea } from '../lib/geo'
@@ -66,9 +66,8 @@ export function LayerMenu({
                     className="btn btn-danger !px-3"
                     aria-label="Revierkarte löschen"
                     onClick={async () => {
-                      if (!confirm(`„${o.name}“ löschen? (Eine daraus gezeichnete Reviergrenze bleibt erhalten.)`)) return
-                      await db.overlays.delete(o.id)
-                      await db.photos.delete(o.photoId)
+                      if (!confirm(`„${o.name}“ löschen? (Eine daraus gezeichnete Reviergrenze bleibt erhalten.)\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
+                      await trashOverlay(o)
                     }}
                   >
                     <Trash2 />

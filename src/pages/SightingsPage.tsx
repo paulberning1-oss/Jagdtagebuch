@@ -2,8 +2,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Camera, Crosshair, Flame, List, MapPin, Plus, SlidersHorizontal, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { MapContainer } from 'react-leaflet'
+import { confirmTrash, SelectActions, SelectButton, SelectCheck, SelectToolbar, TRASH_HINT, useSelection } from '../components/Selection'
 import { Sheet, useToast } from '../components/ui'
 import { db } from '../db/db'
+import { trashSightings } from '../db/trash'
 import { getSetting, setSetting, useSetting } from '../db/settings'
 import type { Sighting } from '../domain/hunt'
 import { EMPTY_FILTER, filterSightings } from '../domain/sightings'
@@ -57,6 +59,16 @@ export default function SightingsPage() {
   const open = (s: Sighting) => {
     setPanel('none')
     setEdit({ s, isNew: false })
+  }
+
+  // Mehrfachauswahl in der Liste (Hook muss vor dem „Lade…“-Rücksprung stehen)
+  const listSel = useSelection()
+  const removeSelected = async () => {
+    const ids = [...listSel.sel]
+    if (!ids.length || !confirmTrash(ids.length)) return
+    const n = await trashSightings(ids)
+    toast(`${n} Sichtung(en) gelöscht – ${TRASH_HINT}`, 'success')
+    listSel.stop()
   }
 
   if (!initialView || !all || baseLayer === undefined) return <div className="flex h-full items-center justify-center text-ink-dim">Lade…</div>
@@ -158,25 +170,44 @@ export default function SightingsPage() {
       )}
 
       {panel === 'list' && (
-        <Sheet title={resultText} onClose={() => setPanel('none')}>
+        <Sheet
+          title={listSel.selecting ? `${listSel.sel.size} ausgewählt` : resultText}
+          onClose={() => {
+            listSel.stop()
+            setPanel('none')
+          }}
+          footer={listSel.selecting ? <SelectActions s={listSel} onDelete={removeSelected} /> : undefined}
+        >
           {!filtered.length && <p className="text-ink-dim">Keine Sichtungen für diesen Filter.</p>}
+          {filtered.length > 0 && !listSel.selecting && (
+            <div className="mb-3 flex justify-end">
+              <SelectButton s={listSel} />
+            </div>
+          )}
+          {listSel.selecting && (
+            <SelectToolbar s={listSel} allKeys={filtered.map((s) => s.id)} demoKeys={filtered.filter((s) => s.demo).map((s) => s.id)} />
+          )}
           <div className="grid gap-2">
             {[...filtered]
               .sort((a, b) => b.time - a.time)
-              .slice(0, 300)
+              .slice(0, listSel.selecting ? 2000 : 300)
               .map((s) => (
                 <button
                   key={s.id}
-                  className="btn !justify-start text-left"
+                  className={`btn !justify-start text-left ${listSel.sel.has(s.id) ? '!border-accent' : ''}`}
+                  aria-pressed={listSel.selecting ? listSel.sel.has(s.id) : undefined}
                   onClick={() => {
+                    if (listSel.selecting) return listSel.toggle(s.id)
                     setFly({ pos: { lat: s.lat, lng: s.lng }, zoom: 17, raise: true, n: Date.now() })
                     open(s)
                   }}
                 >
+                  {listSel.selecting && <SelectCheck on={listSel.sel.has(s.id)} />}
                   <span className="flex-1">
                     <span className="block">
                       {s.count}× {speciesMap.get(s.speciesId)?.name ?? s.speciesId}
                       {s.sexAge.length ? ` (${s.sexAge.join(', ')})` : ''}
+                      {s.demo && <span className="ml-2 text-xs font-normal text-ink-dim">Beispiel</span>}
                     </span>
                     <span className="block text-sm font-normal text-ink-dim">
                       {fmtDateTime(new Date(s.time))} ·{' '}

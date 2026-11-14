@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Plus, Trash2 } from 'luc
 import { useState } from 'react'
 import { useToast } from '../components/ui'
 import { db } from '../db/db'
+import { trashSpecies } from '../db/trash'
 import { speciesColor, SPECIES_PALETTE, type Species } from '../domain/species'
 import { newId } from '../lib/id'
 
@@ -36,8 +37,8 @@ export function SpeciesEditor() {
       toast(`„${s.name}“ wird noch in ${nS} Sichtung(en) und ${nH} Ansitz(en) verwendet – nicht gelöscht.`, 'error')
       return
     }
-    if (!confirm(`„${s.name}“ löschen?`)) return
-    await db.species.delete(s.id)
+    if (!confirm(`„${s.name}“ löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
+    await trashSpecies(s)
   }
 
   return (

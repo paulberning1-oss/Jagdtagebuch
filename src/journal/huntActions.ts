@@ -1,5 +1,6 @@
 // Ansitz starten, beenden, nachtragen, löschen – alles sofort lokal gespeichert.
 import { db, type Facility } from '../db/db'
+import { trashHunts, trashSightings } from '../db/trash'
 import { computeLocalEnv } from '../domain/environment'
 import type { Hunt, Sighting } from '../domain/hunt'
 import { fromPos, type LatLng } from '../lib/geo'
@@ -94,14 +95,9 @@ export async function changeHuntTimeOrPlace(id: string, patch: Partial<Pick<Hunt
   if (next.status === 'done') syncPendingWeather()
 }
 
+/** Ansitz samt Sichtungen in „Zuletzt gelöscht“ verschieben (wiederherstellbar) */
 export async function deleteHunt(id: string) {
-  await db.transaction('rw', [db.hunts, db.sightings, db.photos], async () => {
-    const s = await db.sightings.where('huntId').equals(id).toArray()
-    const photoIds = s.flatMap((x) => x.photoIds)
-    if (photoIds.length) await db.photos.bulkDelete(photoIds)
-    await db.sightings.bulkDelete(s.map((x) => x.id))
-    await db.hunts.delete(id)
-  })
+  await trashHunts([id])
 }
 
 /** Neue Sichtung mit sinnvollen Vorgaben (Zeit jetzt bzw. im Ansitz, Ort = Sitz) */
@@ -168,9 +164,7 @@ export async function saveSightings(list: Sighting[]): Promise<void> {
   syncPendingWeather()
 }
 
+/** Sichtung in „Zuletzt gelöscht“ verschieben – Fotos bleiben bis zum endgültigen Löschen */
 export async function deleteSighting(id: string) {
-  const s = await db.sightings.get(id)
-  if (!s) return
-  if (s.photoIds.length) await db.photos.bulkDelete(s.photoIds)
-  await db.sightings.delete(id)
+  await trashSightings([id])
 }

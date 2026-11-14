@@ -3,6 +3,7 @@ import { Check, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Chip, useToast } from '../components/ui'
 import { db } from '../db/db'
+import { trashCategory } from '../db/trash'
 import { OBJECT_COLORS, type Category, type GeometryKind, type ScentSensitivity } from '../domain/facilityTypes'
 import { newId } from '../lib/id'
 
@@ -57,8 +58,8 @@ export function CategoryForm({
     if (!initial) return
     const used = await db.facilities.where('type').equals(initial.id).count()
     if (used) return toast(`Wird noch von ${used} Objekt(en) genutzt – erst diese löschen oder umstellen.`, 'error')
-    if (!confirm(`Kategorie „${initial.label}“ löschen?`)) return
-    await db.categories.delete(initial.id)
+    if (!confirm(`Kategorie „${initial.label}“ löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
+    await trashCategory(initial)
     onCancel()
   }
 

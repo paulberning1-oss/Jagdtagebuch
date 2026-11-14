@@ -143,10 +143,14 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   windunabhängig: Wechsel kreuzen, durch Dickung/Einstand, durchs Schussfeld. Bewertung warn 3 / Hinweis 1, bester Weg zuerst.
   Anzeige im Wind-Panel (Abschnitt „Anmarschwege“), Kegel entlang des Wegs auf der Karte (`RouteConeLayer`).
 - „Zuletzt gelöscht“ (`src/db/trash.ts`, Tabelle `trash`, DB v6, synchronisiert; Anzeige `src/pages/TrashSection.tsx` unter „Mehr“):
-  Löschen von Objekten und Reviergrenzen verschiebt dorthin (Eintrag = unveränderte Kopie, gleiche ID beim Wiederherstellen).
-  Sitz löschen nimmt seine Anmarschwege mit (gleiche `batch`, kommen beim Wiederherstellen mit zurück). Fotos erst beim
-  endgültigen Löschen weg. Nach 30 Tagen automatisch endgültig (`purgeOldTrash` beim App-Start). „Testdaten löschen“ leert auch Demo-Einträge.
-  Revier-Übersicht: „Auswählen“ → Mehrfachauswahl („alle“ je Gruppe, „Alle Beispiel-Objekte“) → „Löschen (n)“.
+  **Jedes Löschen geht dorthin** – Objekte, Grenzen, Ansitze, Sichtungen, Wildarten, Kategorien, Revier-Fotos
+  (`trashFacilities/Boundaries/Hunts/Sightings/Species/Category/Overlay`; Eintrag = unveränderte Kopie, gleiche ID beim Wiederherstellen).
+  Zugehöriges geht mit (gleiche `batch`, `parentId`): Sitz → Anmarschwege, Ansitz → Sichtungen; kommt beim Wiederherstellen mit zurück
+  (`childrenOf`). Fotos erst beim endgültigen Löschen weg. Nach 30 Tagen endgültig (`purgeOldTrash` beim App-Start).
+  „Testdaten löschen“ leert auch Demo-Einträge. Neue Löschfunktionen → immer über den Papierkorb, nie direkt `delete`.
+- Mehrfachauswahl in allen Listen über `src/components/Selection.tsx` (`useSelection`, `SelectButton`, `SelectToolbar` mit
+  „Alles auswählen“/„Alle Beispiel-Einträge“, `SelectCheck`, `SelectActions`, `confirmTrash`): Revier-Übersicht, Tagebuch,
+  Sichtungsliste, Zuletzt gelöscht (dort „Zurück“/„Endgültig“). Hook vor jedem frühen `return` aufrufen (Hook-Reihenfolge!).
 - Wind-Knopf = **Wind im ganzen Revier** (`src/map/RevierWindPanel.tsx`, Logik `src/domain/revierWind.ts`, Ebene `RevierWindLayer`):
   Karte zeigt das ganze Revier (Ausschnitt mit Rand für das Kürzel), rotes Kürzel (8 Richtungen) auf der Seite, aus der der
   Wind kommt, weiße Pfeile (Raster innerhalb der eigenen Grenze) in Windrichtung. Darunter alle Sitze geprüft (✓/⚠ mit Grund,

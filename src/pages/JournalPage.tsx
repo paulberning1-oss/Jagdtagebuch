@@ -1,8 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarPlus, ChevronRight, CloudOff, Moon, Play, Square, Telescope, Target } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { confirmTrash, SelectActions, SelectButton, SelectCheck, SelectToolbar, TRASH_HINT, useSelection } from '../components/Selection'
 import { Stars, useToast } from '../components/ui'
 import { db } from '../db/db'
+import { trashHunts } from '../db/trash'
 import type { Hunt, Sighting } from '../domain/hunt'
 import { fmtDuration, useNow, useRunningHunt } from '../journal/hooks'
 import { HuntDetail } from '../journal/HuntDetail'
@@ -24,6 +26,8 @@ function JournalHome() {
   const hunts = useLiveQuery(() => db.hunts.orderBy('start').reverse().filter((h) => h.status === 'done').toArray(), [])
   const sightings = useLiveQuery(() => db.sightings.toArray(), []) ?? []
   const [sheet, setSheet] = useState<'start' | 'past' | null>(null)
+  const sel = useSelection()
+  const toast = useToast()
 
   const countByHunt = useMemo(() => {
     const m = new Map<string, number>()
@@ -31,9 +35,17 @@ function JournalHome() {
     return m
   }, [sightings])
 
+  const removeSelected = async () => {
+    const ids = [...sel.sel].filter((id) => hunts?.some((h) => h.id === id))
+    if (!ids.length || !confirmTrash(ids.length, 'Die Sichtungen dieser Ansitze werden mitgelöscht.')) return
+    const n = await trashHunts(ids)
+    toast(`${ids.length} Ansitz(e) gelöscht (mit Sichtungen ${n} Einträge) – ${TRASH_HINT}`, 'success')
+    sel.stop()
+  }
+
   return (
     <div className="relative h-full">
-      <div className="h-full overflow-y-auto p-4 pt-safe">
+      <div className={`h-full overflow-y-auto p-4 pt-safe ${sel.selecting ? 'pb-24' : ''}`}>
         <h1 className="mb-4 text-2xl font-bold">Ansitz-Tagebuch</h1>
 
         {running ? (
@@ -52,15 +64,37 @@ function JournalHome() {
         )}
 
         {hunts && hunts.length > 0 && (
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-dim">Bisherige Ansitze ({hunts.length})</h2>
+          <div className="mb-2 flex items-center gap-2">
+            <h2 className="flex-1 text-sm font-semibold uppercase tracking-wide text-ink-dim">
+              {sel.selecting ? `${sel.sel.size} ausgewählt` : `Bisherige Ansitze (${hunts.length})`}
+            </h2>
+            {!sel.selecting && <SelectButton s={sel} />}
+          </div>
+        )}
+        {sel.selecting && hunts && (
+          <SelectToolbar s={sel} allKeys={hunts.map((h) => h.id)} demoKeys={hunts.filter((h) => h.demo).map((h) => h.id)} />
         )}
         <div className="grid gap-2 pb-4">
-          {hunts?.map((h) => <HuntRow key={h.id} h={h} count={countByHunt.get(h.id) ?? 0} />)}
+          {hunts?.map((h) => (
+            <HuntRow
+              key={h.id}
+              h={h}
+              count={countByHunt.get(h.id) ?? 0}
+              selecting={sel.selecting}
+              selected={sel.sel.has(h.id)}
+              onToggle={() => sel.toggle(h.id)}
+            />
+          ))}
           {hunts && !hunts.length && !running && (
             <p className="text-ink-dim">Noch keine Einträge. Starte deinen ersten Ansitz oder trage einen vergangenen nach.</p>
           )}
         </div>
       </div>
+      {sel.selecting && (
+        <div className="absolute inset-x-0 bottom-0 z-[900] flex gap-2 border-t border-line bg-panel p-3">
+          <SelectActions s={sel} onDelete={removeSelected} />
+        </div>
+      )}
       {sheet === 'start' && <StartHuntSheet onClose={() => setSheet(null)} />}
       {sheet === 'past' && <PastHuntSheet onClose={() => setSheet(null)} />}
     </div>
@@ -96,7 +130,7 @@ function RunningCard({ hunt, count }: { hunt: Hunt; count: number }) {
         <button
           className="mt-1 text-sm text-ink-dim underline"
           onClick={async () => {
-            if (!confirm('Laufenden Ansitz verwerfen (wird nicht gespeichert)?')) return
+            if (!confirm('Laufenden Ansitz verwerfen? (Landet in „Mehr → Zuletzt gelöscht“)')) return
             await deleteHunt(hunt.id)
             toast('Ansitz verworfen')
           }}
@@ -109,14 +143,32 @@ function RunningCard({ hunt, count }: { hunt: Hunt; count: number }) {
   )
 }
 
-function HuntRow({ h, count }: { h: Hunt; count: number }) {
+function HuntRow({
+  h,
+  count,
+  selecting = false,
+  selected = false,
+  onToggle,
+}: {
+  h: Hunt
+  count: number
+  selecting?: boolean
+  selected?: boolean
+  onToggle?: () => void
+}) {
   const w = h.env?.weather
   const moon = h.env?.moon
   return (
-    <button className="card flex items-center gap-3 text-left active:scale-[0.99]" onClick={() => navigate('tagebuch', h.id)}>
+    <button
+      className={`card flex items-center gap-3 text-left active:scale-[0.99] ${selected ? '!border-accent' : ''}`}
+      onClick={() => (selecting ? onToggle?.() : navigate('tagebuch', h.id))}
+      aria-pressed={selecting ? selected : undefined}
+    >
+      {selecting && <SelectCheck on={selected} />}
       <div className="min-w-0 flex-1">
         <p className="truncate text-lg font-bold">
           {h.standName}
+          {h.demo && <span className="ml-2 text-xs font-normal text-ink-dim">Beispiel</span>}
           {h.success && <Target className="ml-2 inline size-5 text-good" aria-label="Erfolg" />}
         </p>
         <p className="text-ink-dim">
@@ -148,7 +200,7 @@ function HuntRow({ h, count }: { h: Hunt; count: number }) {
           </div>
         )}
       </div>
-      <ChevronRight className="shrink-0 text-ink-dim" />
+      {!selecting && <ChevronRight className="shrink-0 text-ink-dim" />}
     </button>
   )
 }

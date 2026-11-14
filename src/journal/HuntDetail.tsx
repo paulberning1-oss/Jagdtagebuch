@@ -57,9 +57,9 @@ export function HuntDetail({ id }: { id: string }) {
   }
 
   const remove = async () => {
-    if (!confirm('Diesen Ansitz mit allen Sichtungen löschen?')) return
+    if (!confirm('Diesen Ansitz mit allen Sichtungen löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.')) return
     await deleteHunt(h.id)
-    toast('Ansitz gelöscht')
+    toast('Ansitz gelöscht – wiederherstellbar unter „Mehr → Zuletzt gelöscht“')
     navigate('tagebuch')
   }
 

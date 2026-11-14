@@ -36,7 +36,7 @@ export function SightingEditor({
     onClose(true)
   }
   const remove = async () => {
-    if (!confirm('Diese Sichtung löschen?')) return
+    if (!confirm('Diese Sichtung löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.')) return
     await deleteSighting(s.id)
     onClose(false)
   }
