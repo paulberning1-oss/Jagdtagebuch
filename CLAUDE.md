@@ -107,6 +107,9 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
   Check läuft den Weg in 25-m-Schritten ab: Witterungskegel über warn/hint-Objekte und ins Schussfeld (letzte 30 m ausgenommen),
   windunabhängig: Wechsel kreuzen, durch Dickung/Einstand, durchs Schussfeld. Bewertung warn 3 / Hinweis 1, bester Weg zuerst.
   Anzeige im Wind-Panel (Abschnitt „Anmarschwege“), Kegel entlang des Wegs auf der Karte (`RouteConeLayer`).
+- Kompass (`src/map/CompassRose.tsx`): Knopf in der rechten Kartenleiste, Rose unten rechts (über „Hinzufügen“).
+  Karte ist eingenordet → N oben. Nadel = Blickrichtung des Handys (iOS `webkitCompassHeading` nach
+  `DeviceOrientationEvent.requestPermission()` beim Tippen, Android `deviceorientationabsolute`). Setting `compassOpen` nur je Gerät.
 - Witterungskegel: Standard 300 m lang, 40° Öffnung (einstellbar). Warnung bei Wechsel, Kirrung,
   Salzlecke, Suhle, Dickung, Einstand; Hinweis bei Äsungsfläche. Zusätzlich Wind relativ zur Blickrichtung.
 - Wind < 4 km/h gilt als „umlaufend“ (Hinweis), Böen ≥ 40 km/h als Unruhe-Hinweis.

@@ -20,7 +20,7 @@ export const SYNCED_TABLES = ['species', 'settings', 'categories', 'facilities',
 type SyncedTable = (typeof SYNCED_TABLES)[number]
 
 /** Einstellungen, die nur zu diesem Gerät gehören */
-const DEVICE_SETTINGS = new Set(['mapView'])
+const DEVICE_SETTINGS = new Set(['mapView', 'compassOpen'])
 
 const BATCH = 200
 /** Beim Herunterladen etwas überlappen – doppelt gelesene Einträge schaden nicht */

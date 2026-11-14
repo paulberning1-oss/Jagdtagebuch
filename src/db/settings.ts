@@ -21,6 +21,8 @@ export interface Settings {
   assistantSpecies: string
   /** Assistent: eigene Stärke je Regel */
   ruleSettings: RuleSettings
+  /** Kompass auf der Karte eingeblendet (nur dieses Gerät) */
+  compassOpen: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -32,6 +34,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sightingView: 'punkte',
   assistantSpecies: 'rehwild',
   ruleSettings: {},
+  compassOpen: false,
 }
 
 export async function getSetting<K extends keyof Settings>(key: K): Promise<Settings[K]> {

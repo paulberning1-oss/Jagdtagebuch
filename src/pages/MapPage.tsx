@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import L from 'leaflet'
-import { Crosshair, Fence, Layers, List, LocateFixed, Plus, Timer, Undo2, Wind, X } from 'lucide-react'
+import { Compass, Crosshair, Fence, Layers, List, LocateFixed, Plus, Timer, Undo2, Wind, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, useMap } from 'react-leaflet'
 import { Chip, useToast } from '../components/ui'
@@ -10,6 +10,7 @@ import { getSetting, setSetting, useSetting } from '../db/settings'
 import { DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/demoRevier'
 import { typeInfo, type FacilityType } from '../domain/facilityTypes'
 import { attachToStand } from '../domain/approach'
+import { CompassRose, requestCompassPermission } from '../map/CompassRose'
 import { DEFAULT_WIDTH } from '../domain/shootingField'
 import { fromPos, toPos, type LatLng } from '../lib/geo'
 import { newId } from '../lib/id'
@@ -79,6 +80,7 @@ export default function MapPage() {
   const overlays = useLiveQuery(() => db.overlays.toArray(), []) ?? []
   const mapRef = useRef<L.Map | null>(null)
   const baseLayer = useSetting('baseLayer')
+  const compassOpen = useSetting('compassOpen')
   const toast = useToast()
 
   const [initialView, setInitialView] = useState<InitialView | null>(null)
@@ -558,6 +560,24 @@ export default function MapPage() {
           >
             <Wind />
           </button>
+          <button
+            className={`btn-round ${compassOpen ? '!bg-accent !text-accent-ink' : ''}`}
+            onClick={async () => {
+              if (!compassOpen) await requestCompassPermission() // iPhone: Erlaubnis nur bei einem Tipp möglich
+              setSetting('compassOpen', !compassOpen)
+            }}
+            aria-label={compassOpen ? 'Kompass ausblenden' : 'Kompass einblenden'}
+            aria-pressed={!!compassOpen}
+          >
+            <Compass />
+          </button>
+        </div>
+      )}
+
+      {/* Kompass unten rechts – über dem Hinzufügen-Knopf, damit nichts überlappt */}
+      {compassOpen && mode.t !== 'overlay' && (
+        <div className="pointer-events-none absolute bottom-24 right-3 z-[900]">
+          <CompassRose onClose={() => setSetting('compassOpen', false)} />
         </div>
       )}
 
