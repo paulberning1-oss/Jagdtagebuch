@@ -4,6 +4,7 @@ import { useEffect, useMemo, type ReactNode } from 'react'
 import { AuthGate } from './cloud/auth'
 import { ToastProvider } from './components/ui'
 import { db } from './db/db'
+import { purgeOldTrash } from './db/trash'
 import { registerCustomCategories } from './domain/facilityTypes'
 import { navigate, useLocation, type Route } from './lib/router'
 import AssistantPage from './pages/AssistantPage'
@@ -25,6 +26,8 @@ export default function App() {
   const { route, parts } = useLocation()
   // Wetterdaten offener Ansitze nachladen, sobald Internet da ist
   useEffect(() => startWeatherSync(), [])
+  // „Zuletzt gelöscht“: Einträge älter als 30 Tage endgültig entfernen
+  useEffect(() => void purgeOldTrash().catch(() => {}), [])
   // Eigene Kategorien einhängen, bevor die Seiten zeichnen (typeInfo kennt sie danach)
   const categories = useLiveQuery(() => db.categories.toArray(), [])
   useMemo(() => categories && registerCustomCategories(categories), [categories])

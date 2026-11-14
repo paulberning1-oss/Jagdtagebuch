@@ -142,6 +142,11 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   Check läuft den Weg in 25-m-Schritten ab: Witterungskegel über warn/hint-Objekte und ins Schussfeld (letzte 30 m ausgenommen),
   windunabhängig: Wechsel kreuzen, durch Dickung/Einstand, durchs Schussfeld. Bewertung warn 3 / Hinweis 1, bester Weg zuerst.
   Anzeige im Wind-Panel (Abschnitt „Anmarschwege“), Kegel entlang des Wegs auf der Karte (`RouteConeLayer`).
+- „Zuletzt gelöscht“ (`src/db/trash.ts`, Tabelle `trash`, DB v6, synchronisiert; Anzeige `src/pages/TrashSection.tsx` unter „Mehr“):
+  Löschen von Objekten und Reviergrenzen verschiebt dorthin (Eintrag = unveränderte Kopie, gleiche ID beim Wiederherstellen).
+  Sitz löschen nimmt seine Anmarschwege mit (gleiche `batch`, kommen beim Wiederherstellen mit zurück). Fotos erst beim
+  endgültigen Löschen weg. Nach 30 Tagen automatisch endgültig (`purgeOldTrash` beim App-Start). „Testdaten löschen“ leert auch Demo-Einträge.
+  Revier-Übersicht: „Auswählen“ → Mehrfachauswahl („alle“ je Gruppe, „Alle Beispiel-Objekte“) → „Löschen (n)“.
 - Kompass (`src/map/CompassRose.tsx`): Knopf in der rechten Kartenleiste, Rose unten rechts (über „Hinzufügen“).
   Karte ist eingenordet → N oben. Nadel = Blickrichtung des Handys (iOS `webkitCompassHeading` nach
   `DeviceOrientationEvent.requestPermission()` beim Tippen, Android `deviceorientationabsolute`). Setting `compassOpen` nur je Gerät.

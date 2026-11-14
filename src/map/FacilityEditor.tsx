@@ -3,6 +3,7 @@ import { Camera, Footprints, Move, PenLine, Play, Plus, Trash2, Wind } from 'luc
 import { useEffect, useState } from 'react'
 import { Field, Sheet, useToast } from '../components/ui'
 import { db, type Facility } from '../db/db'
+import { trashFacilities } from '../db/trash'
 import { CROPS, kindOfGeometry, OBJECT_COLORS, typeInfo, typesOfKind, type FacilityType } from '../domain/facilityTypes'
 import { COMPASS_8, compass16, fromPos, lineLength, polygonArea } from '../lib/geo'
 import { savePhoto } from '../lib/image'
@@ -59,11 +60,12 @@ export function FacilityEditor({
     db.facilities.update(draft.id, { ...patch, updatedAt: next.updatedAt })
   }
 
+  // Löschen = in „Zuletzt gelöscht“ verschieben (Fotos bleiben bis zum endgültigen Löschen)
   const remove = async () => {
-    if (!confirm(`„${draft.name || info.label}“ wirklich löschen?`)) return
-    await db.facilities.delete(draft.id)
-    if (draft.photoIds.length) await db.photos.bulkDelete(draft.photoIds)
-    toast('Gelöscht')
+    const extra = info.isStand && routes.length ? `\n\nSeine ${routes.length} Anmarschweg(e) werden mitgelöscht.` : ''
+    if (!confirm(`„${draft.name || info.label}“ löschen?${extra}\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
+    await trashFacilities([draft.id])
+    toast('Gelöscht – wiederherstellbar unter „Mehr → Zuletzt gelöscht“')
     onClose()
   }
 

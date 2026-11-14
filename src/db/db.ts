@@ -5,6 +5,7 @@ import type { LineString, MultiPolygon, Point, Polygon } from 'geojson'
 import type { Category, FacilityType } from '../domain/facilityTypes'
 import type { Hunt, Sighting } from '../domain/hunt'
 import { DEFAULT_SPECIES, type Species } from '../domain/species'
+import type { TrashEntry } from './trash'
 
 export interface Facility {
   id: string
@@ -91,6 +92,7 @@ export class AnsitzDB extends Dexie {
   syncState!: Dexie.Table<SyncState, [string, string]>
   syncMeta!: EntityTable<SyncMeta, 'key'>
   categories!: EntityTable<Category, 'id'>
+  trash!: EntityTable<TrashEntry, 'id'>
 
   constructor() {
     super('ansitzplaner')
@@ -132,6 +134,10 @@ export class AnsitzDB extends Dexie {
     // Erweiterung: eigene Kategorien für Objekte auf der Karte
     this.version(5).stores({
       categories: 'id, order',
+    })
+    // „Zuletzt gelöscht“ (Papierkorb)
+    this.version(6).stores({
+      trash: 'id, deletedAt, batch',
     })
     // Ganz neue Datenbank: Startliste der Wildarten anlegen
     this.on('populate', (tx) => {

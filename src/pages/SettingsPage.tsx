@@ -9,6 +9,7 @@ import { clearDemoData, DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/dem
 import { navigate } from '../lib/router'
 import { hasGoogleKey } from '../map/googleTiles'
 import { CategoryList } from './CategoryList'
+import { TrashSection } from './TrashSection'
 import { SpeciesEditor } from './SpeciesEditor'
 
 export default function SettingsPage() {
@@ -39,6 +40,7 @@ export default function SettingsPage() {
       <h1 className="mb-4 text-2xl font-bold">Mehr</h1>
 
       <AccountSection />
+      <TrashSection />
 
       <section className="card mb-4">
         <h2 className="mb-3 text-lg font-bold">Witterungskegel</h2>

@@ -126,7 +126,9 @@ export async function loadDemoData() {
 
 /** Löscht ALLE Testdaten – eigene Einträge bleiben unberührt */
 export async function clearDemoData() {
-  await db.transaction('rw', [db.facilities, db.boundaries, db.photos, db.hunts, db.sightings], async () => {
+  await db.transaction('rw', [db.facilities, db.boundaries, db.photos, db.hunts, db.sightings, db.trash], async () => {
+    // Auch gelöschte Testdaten aus „Zuletzt gelöscht“ entfernen
+    await db.trash.filter((x) => !!x.demo).delete()
     await db.hunts.filter((x) => !!x.demo).delete()
     await db.sightings.filter((x) => !!x.demo).delete()
     await db.facilities.filter((x) => !!x.demo).delete()

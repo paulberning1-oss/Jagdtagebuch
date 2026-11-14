@@ -1,8 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, Eye, EyeOff, FileUp, Image, Maximize, Move, PenLine, Plus, Trash2 } from 'lucide-react'
+import { Check, Eye, EyeOff, FileUp, Image, ListChecks, Maximize, Move, PenLine, Plus, Square, SquareCheck, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Sheet, useToast } from '../components/ui'
 import { db, type Boundary, type Facility, type MapOverlay } from '../db/db'
+import { trashBoundaries, trashFacilities } from '../db/trash'
 import { allTypes, typeInfo, typesOfKind, type FacilityType, type GeometryKind } from '../domain/facilityTypes'
 import { CategoryForm } from './CategoryForm'
 import { fromPos, polygonArea } from '../lib/geo'
@@ -219,22 +220,104 @@ export function FacilityList({
 }) {
   const facilities = useLiveQuery(() => db.facilities.toArray(), []) ?? []
   const boundaries = useLiveQuery(() => db.boundaries.toArray(), []) ?? []
+  const toast = useToast()
+  // Auswahlmodus: Schlüssel 'f:<id>' (Objekt) bzw. 'b:<id>' (Reviergrenze)
+  const [selecting, setSelecting] = useState(false)
+  const [sel, setSel] = useState<Set<string>>(new Set())
+
+  const allKeys = [...boundaries.map((b) => `b:${b.id}`), ...facilities.map((f) => `f:${f.id}`)]
+  const demoKeys = [...boundaries.filter((b) => b.demo).map((b) => `b:${b.id}`), ...facilities.filter((f) => f.demo).map((f) => `f:${f.id}`)]
+  const toggle = (k: string) => setSel((s) => (s.has(k) ? new Set([...s].filter((x) => x !== k)) : new Set([...s, k])))
+  const setMany = (keys: string[], on: boolean) => setSel((s) => (on ? new Set([...s, ...keys]) : new Set([...s].filter((x) => !keys.includes(x)))))
+  const stop = () => {
+    setSelecting(false)
+    setSel(new Set())
+  }
+
+  const removeSelected = async () => {
+    const keys = [...sel].filter((k) => allKeys.includes(k))
+    if (!keys.length) return
+    if (!confirm(`${keys.length} Einträge löschen?\n\nDu kannst sie 30 Tage lang unter „Mehr → Zuletzt gelöscht“ wiederherstellen.`)) return
+    const n =
+      (await trashFacilities(keys.filter((k) => k.startsWith('f:')).map((k) => k.slice(2)))) +
+      (await trashBoundaries(keys.filter((k) => k.startsWith('b:')).map((k) => k.slice(2))))
+    toast(`${n} gelöscht – wiederherstellen unter „Mehr → Zuletzt gelöscht“`, 'success')
+    stop()
+  }
+
+  const Row = ({ k, label, onOpen }: { k: string; label: string; onOpen: () => void }) =>
+    selecting ? (
+      <button className={`btn !justify-start text-left ${sel.has(k) ? '!border-accent' : ''}`} onClick={() => toggle(k)} aria-pressed={sel.has(k)}>
+        {sel.has(k) ? <SquareCheck className="shrink-0 text-accent" /> : <Square className="shrink-0 text-ink-dim" />}
+        <span className="truncate">{label}</span>
+      </button>
+    ) : (
+      <button className="btn !justify-start text-left" onClick={onOpen}>
+        <span className="truncate">{label}</span>
+      </button>
+    )
+
+  const GroupHead = ({ title, keys }: { title: string; keys: string[] }) => {
+    const all = keys.every((k) => sel.has(k))
+    return (
+      <div className="mb-2 flex items-center gap-2">
+        <h3 className="flex-1 text-sm font-semibold uppercase tracking-wide text-ink-dim">{title}</h3>
+        {selecting && (
+          <button className="text-sm font-semibold text-accent underline" onClick={() => setMany(keys, !all)}>
+            {all ? 'keine' : 'alle'}
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  const empty = !facilities.length && !boundaries.length
   return (
-    <Sheet title="Revier-Übersicht" onClose={onClose}>
-      {!facilities.length && !boundaries.length && <p className="text-ink-dim">Noch nichts angelegt.</p>}
-      {(facilities.length > 0 || boundaries.length > 0) && (
-        <button className="btn btn-primary mb-4 w-full" onClick={onShowRevier}>
-          <Maximize /> Mein Revier anzeigen
-        </button>
+    <Sheet
+      title={selecting ? `${sel.size} ausgewählt` : 'Revier-Übersicht'}
+      onClose={onClose}
+      footer={
+        selecting ? (
+          <>
+            <button className="btn flex-1" onClick={stop}>
+              Abbrechen
+            </button>
+            <button className="btn btn-danger flex-1" disabled={!sel.size} onClick={removeSelected}>
+              <Trash2 /> Löschen ({sel.size})
+            </button>
+          </>
+        ) : undefined
+      }
+    >
+      {empty && <p className="text-ink-dim">Noch nichts angelegt.</p>}
+      {!empty && !selecting && (
+        <div className="mb-4 grid grid-cols-[1fr_auto] gap-2">
+          <button className="btn btn-primary" onClick={onShowRevier}>
+            <Maximize /> Mein Revier anzeigen
+          </button>
+          <button className="btn" onClick={() => setSelecting(true)}>
+            <ListChecks /> Auswählen
+          </button>
+        </div>
+      )}
+      {selecting && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button className="btn !min-h-11 !px-3 !text-base" onClick={() => setMany(allKeys, sel.size < allKeys.length)}>
+            {sel.size < allKeys.length ? 'Alles auswählen' : 'Nichts auswählen'}
+          </button>
+          {demoKeys.length > 0 && (
+            <button className="btn !min-h-11 !px-3 !text-base" onClick={() => setMany(demoKeys, true)}>
+              Alle Beispiel-Objekte ({demoKeys.length})
+            </button>
+          )}
+        </div>
       )}
       {boundaries.length > 0 && (
         <>
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-dim">Reviergrenze</h3>
+          <GroupHead title="Reviergrenze" keys={boundaries.map((b) => `b:${b.id}`)} />
           <div className="mb-4 grid gap-2">
             {boundaries.map((b) => (
-              <button key={b.id} className="btn !justify-start text-left" onClick={() => onPickBoundary(b)}>
-                {b.name}
-              </button>
+              <Row key={b.id} k={`b:${b.id}`} label={b.name + (b.demo ? ' (Beispiel)' : '')} onOpen={() => onPickBoundary(b)} />
             ))}
           </div>
         </>
@@ -244,19 +327,16 @@ export function FacilityList({
         if (!items.length) return null
         return (
           <div key={ti.type}>
-            <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-dim">
-              {ti.label} ({items.length})
-            </h3>
+            <GroupHead title={`${ti.label} (${items.length})`} keys={items.map((f) => `f:${f.id}`)} />
             <div className="mb-4 grid gap-2">
               {items.map((f) => (
-                <button key={f.id} className="btn !justify-start text-left" onClick={() => onPickFacility(f)}>
-                  <span className="truncate">{f.name || ti.label}</span>
-                </button>
+                <Row key={f.id} k={`f:${f.id}`} label={(f.name || ti.label) + (f.demo ? ' (Beispiel)' : '')} onOpen={() => onPickFacility(f)} />
               ))}
             </div>
           </div>
         )
       })}
+      {selecting && <p className="pb-2 text-sm text-ink-dim">Beim Löschen eines Sitzes gehen seine Anmarschwege mit. Alles lässt sich 30 Tage lang wiederherstellen.</p>}
     </Sheet>
   )
 }
@@ -279,9 +359,9 @@ export function BoundarySheet({ id, onClose, onRedraw }: { id: string; onClose: 
             className="btn btn-danger"
             aria-label="Löschen"
             onClick={async () => {
-              if (!confirm('Diese Reviergrenze löschen?')) return
-              await db.boundaries.delete(b.id)
-              toast('Reviergrenze gelöscht')
+              if (!confirm('Diese Reviergrenze löschen? (30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“)')) return
+              await trashBoundaries([b.id])
+              toast('Reviergrenze gelöscht – wiederherstellbar unter „Mehr → Zuletzt gelöscht“')
               onClose()
             }}
           >
