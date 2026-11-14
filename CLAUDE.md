@@ -195,9 +195,12 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
 
 ## Arbeitsweise: PC = Werkstatt, Handy = Endverbraucher
 - Gebaut wird immer auf einem **Arbeits-Branch**, nie direkt auf `main` committen. Jeder Push auf `main` geht sofort aufs Handy.
-- Veröffentlichen **nur auf ausdrücklichen Wunsch des Nutzers**: Doppelklick auf `Veröffentlichen.cmd` bzw. `npm run veroeffentlichen`
-  (`scripts/veroeffentlichen.mjs`). Prüft: alles committet, baut auf `origin/main` auf (nur vorwärts, nie überschreiben),
-  Tests, Build, Rückfrage j/n → `git push origin HEAD:main`.
+- **Der Nutzer will immer die neueste Version auf dem Handy** (Entscheidung vom 14.11.2026): Nach jedem **fertigen, getesteten**
+  Teilschritt bzw. jeder fertigen Änderung automatisch: Commit → Push des Arbeits-Branches → veröffentlichen mit
+  `npm run veroeffentlichen` (Rückfrage per `echo j |` beantworten) → Ergebnis des GitHub-Baus prüfen und dem Nutzer melden.
+  **Nie halbfertige Zwischenstände** veröffentlichen. Nur in einem Chat arbeiten (sonst Konflikte beim Push).
+- Veröffentlichen = `scripts/veroeffentlichen.mjs` (auch per Doppelklick auf `Veröffentlichen.cmd`). Prüft: alles committet,
+  baut auf `origin/main` auf (nur vorwärts, nie überschreiben), Tests, Build, Rückfrage j/n → `git push origin HEAD:main`.
 - GitHub-Workflow bricht ohne Supabase-Secrets und bei roten Tests ab → die alte Version bleibt online.
 - „Mehr“ zeigt ganz unten Stand (Bauzeit + Commit), damit man auf dem Handy sieht, ob die neue Version da ist.
 
