@@ -5,7 +5,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Chip, ChipGroup, DecimalInput, Section, Stars, useToast } from '../components/ui'
 import { db } from '../db/db'
 import { typeInfo } from '../domain/facilityTypes'
-import { DISTURBANCES, HUNT_TYPES, type Hunt, type Kill, type Sighting } from '../domain/hunt'
+import { SpeechTextarea } from '../components/SpeechTextarea'
+import { ACTIVITY_LEVELS, DISTURBANCES, HUNT_TYPES, type Hunt, type Kill, type Sighting } from '../domain/hunt'
+import { suggestPhases } from '../domain/phases'
+import { ConditionsEditor } from './ConditionsEditor'
 import { distance, fromPos } from '../lib/geo'
 import { newId } from '../lib/id'
 import { navigate } from '../lib/router'
@@ -65,9 +68,19 @@ export function HuntForm({ id }: { id: string }) {
     if (!f || f.geometry.type !== 'Point') return
     const p = fromPos(f.geometry.coordinates)
     const patch = { standId: f.id, standName: f.name, lat: p.lat, lng: p.lng }
-    setH({ ...h, ...patch })
+    // Anmarschweg gehört zum alten Sitz → zurücksetzen
+    setH({ ...h, ...patch, routeId: null })
     changeHuntTimeOrPlace(h.id, patch)
+    if (h.routeId) db.hunts.update(h.id, { routeId: null })
   }
+
+  // Anmarschwege des gewählten Sitzes
+  const routes = facilities.filter((f) => f.type === 'anmarsch' && f.standId === h.standId)
+  // Jagdliche Phasen: Vorschläge zum Datum (Zielwildarten zuerst) + bereits gewählte eigene
+  const phases = h.phases ?? []
+  const suggested = suggestPhases(h.start, h.targetSpecies)
+  const ownPhases = phases.filter((p) => !suggested.includes(p))
+  const togglePhase = (p: string) => update({ phases: phases.includes(p) ? phases.filter((x) => x !== p) : [...phases, p] })
 
   const setKill = (kid: string, patch: Partial<Kill>) => update({ kills: h.kills.map((k) => (k.id === kid ? { ...k, ...patch } : k)) })
 
@@ -121,7 +134,51 @@ export function HuntForm({ id }: { id: string }) {
                 ))}
               </select>
             </label>
+            {(routes.length > 0 || h.routeId) && (
+              <label>
+                <span className="label">Anmarschweg</span>
+                <select className="input" value={h.routeId ?? ''} onChange={(e) => update({ routeId: e.target.value || null })}>
+                  <option value="">– nicht angegeben –</option>
+                  {routes.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name || 'Anmarschweg'}
+                    </option>
+                  ))}
+                  {h.routeId && !routes.some((r) => r.id === h.routeId) && <option value={h.routeId}>(gelöschter Weg)</option>}
+                </select>
+              </label>
+            )}
           </div>
+        </Section>
+
+        <Section title="Bedingungen (automatisch, änderbar)">
+          <ConditionsEditor h={h} onChange={(overrides) => update({ overrides })} />
+        </Section>
+
+        <Section title="Jagdliche Phase / Besonderheit">
+          {suggested.length > 0 && <p className="mb-2 text-sm text-ink-dim">Vorschläge zum Datum – antippen zum Übernehmen:</p>}
+          <div className="mb-2 flex flex-wrap gap-2">
+            {[...suggested, ...ownPhases].map((p) => (
+              <Chip key={p} active={phases.includes(p)} onClick={() => togglePhase(p)}>
+                {p}
+              </Chip>
+            ))}
+          </div>
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const input = e.currentTarget.elements.namedItem('phase') as HTMLInputElement
+              const v = input.value.trim()
+              if (v && !phases.includes(v)) update({ phases: [...phases, v] })
+              input.value = ''
+            }}
+          >
+            <input name="phase" className="input" placeholder="Eigene, z. B. „Mais gehäckselt“" />
+            <button className="btn !px-4" aria-label="Phase hinzufügen">
+              <Plus />
+            </button>
+          </form>
         </Section>
 
         <Section title="Jagdart">
@@ -144,7 +201,7 @@ export function HuntForm({ id }: { id: string }) {
                 <span className="flex-1">
                   <span className="block">
                     {s.count}× {speciesMap.get(s.speciesId)?.name ?? s.speciesId}
-                    {s.sexAge.length ? ` · ${s.sexAge.join(', ')}` : ''}
+                    {s.sexAge.length ? ` · ${s.sexAge.join(', ')}` : ''}{s.ageEstimate ? ` · ${s.ageEstimate}` : ''}
                   </span>
                   <span className="block text-sm font-normal text-ink-dim">
                     {fmtTime(new Date(s.time))} Uhr{s.behavior ? ` · ${s.behavior}` : ''}
@@ -159,6 +216,22 @@ export function HuntForm({ id }: { id: string }) {
           <button className="btn w-full" onClick={() => setEditSighting({ s: newSighting(h, standPos, defaultSpecies), isNew: true })}>
             <Plus /> Anblick hinzufügen
           </button>
+        </Section>
+
+        <Section title="Wildaktivität (deine Einschätzung)">
+          <div className="grid grid-cols-5 gap-1">
+            {ACTIVITY_LEVELS.map((a) => (
+              <button
+                key={a.value}
+                className={`btn !min-h-14 flex-col !gap-0 !px-1 !text-xs ${h.activity === a.value ? 'btn-primary' : ''}`}
+                onClick={() => update({ activity: h.activity === a.value ? null : a.value })}
+                aria-pressed={h.activity === a.value}
+              >
+                <span className="text-lg font-bold">{a.value}</span>
+                <span className="leading-tight">{a.label}</span>
+              </button>
+            ))}
+          </div>
         </Section>
 
         <Section title="Erfolg?">
@@ -240,6 +313,15 @@ export function HuntForm({ id }: { id: string }) {
               <button className="btn" onClick={addKill}>
                 <Plus /> Weiteres Stück
               </button>
+              <div>
+                <span className="label">Details zum Erfolg</span>
+                <SpeechTextarea
+                  label="Details zum Erfolg"
+                  value={h.successDetails ?? ''}
+                  onChange={(successDetails) => update({ successDetails })}
+                  placeholder="z. B. Schussentfernung, Treffersitz, Fluchtstrecke, Nachsuche…"
+                />
+              </div>
             </div>
           )}
         </Section>
@@ -253,6 +335,24 @@ export function HuntForm({ id }: { id: string }) {
           />
         </Section>
 
+        <Section title="Fazit – wie habe ich den Ansitz wahrgenommen?">
+          <SpeechTextarea
+            label="Fazit"
+            value={h.conclusion ?? ''}
+            onChange={(conclusion) => update({ conclusion })}
+            placeholder="z. B. Ruhiger Abend, Rehwild zog erst bei letztem Licht aus…"
+          />
+        </Section>
+
+        <Section title="Fehler – was mache ich nächstes Mal anders?">
+          <SpeechTextarea
+            label="Fehler und nächstes Mal anders"
+            value={h.mistakes ?? ''}
+            onChange={(mistakes) => update({ mistakes })}
+            placeholder="z. B. Zu spät angekommen, über den Wechsel gelaufen, Wind falsch eingeschätzt…"
+          />
+        </Section>
+
         <Section title="Besonderheiten">
           <textarea
             className="input min-h-28 py-3"
@@ -262,7 +362,7 @@ export function HuntForm({ id }: { id: string }) {
           />
         </Section>
 
-        <Section title="Deine Bewertung">
+        <Section title="Gesamteindruck (Sterne)">
           <Stars value={h.rating} onChange={(rating) => update({ rating })} />
         </Section>
 

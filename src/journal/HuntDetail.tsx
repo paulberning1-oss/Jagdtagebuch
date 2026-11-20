@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { Stars, useToast } from '../components/ui'
 import { db } from '../db/db'
 import { relText, weatherCodeText } from '../domain/environment'
-import { HUNT_TYPES, type Hunt } from '../domain/hunt'
+import { ACTIVITY_LEVELS, effectiveEnv, HUNT_TYPES, type Hunt } from '../domain/hunt'
 import { navigate } from '../lib/router'
 import { fmtDate, fmtTime } from '../lib/time'
 import { loadHuntWeather } from '../services/weatherSync'
@@ -25,6 +25,14 @@ function Tile({ icon, title, children }: { icon: ReactNode; title: string; child
     </div>
   )
 }
+function TextBlock({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="mb-3 last:mb-0">
+      <p className="text-sm font-semibold uppercase tracking-wide text-ink-dim">{title}</p>
+      <p className="whitespace-pre-wrap">{children}</p>
+    </div>
+  )
+}
 function Row({ k, v }: { k: string; v: ReactNode }) {
   return (
     <>
@@ -36,6 +44,10 @@ function Row({ k, v }: { k: string; v: ReactNode }) {
 
 export function HuntDetail({ id }: { id: string }) {
   const h = useLiveQuery(() => db.hunts.get(id), [id])
+  const route = useLiveQuery(async () => {
+    const hunt = await db.hunts.get(id)
+    return hunt?.routeId ? db.facilities.get(hunt.routeId) : undefined
+  }, [id])
   const sightings = useLiveQuery(() => db.sightings.where('huntId').equals(id).sortBy('time'), [id]) ?? []
   const speciesMap = useSpeciesMap()
   const toast = useToast()
@@ -63,10 +75,14 @@ export function HuntDetail({ id }: { id: string }) {
     navigate('tagebuch')
   }
 
-  const w = h.env?.weather
-  const sun = h.env?.sun
-  const moon = h.env?.moon
-  const cal = h.env?.calendar
+  // Bedingungen inkl. Handkorrekturen
+  const env = effectiveEnv(h)
+  const w = env?.weather
+  const sun = env?.sun
+  const moon = env?.moon
+  const cal = env?.calendar
+  const corrected = h.overrides && Object.values(h.overrides).some((v) => v != null)
+  const activity = ACTIVITY_LEVELS.find((a) => a.value === h.activity)
 
   return (
     <div className="h-full overflow-y-auto">
@@ -94,8 +110,32 @@ export function HuntDetail({ id }: { id: string }) {
             {h.targetSpecies.length > 0 && ` auf ${h.targetSpecies.map((s) => speciesMap.get(s)?.name ?? s).join(', ')}`}
           </p>
           <Stars value={h.rating} size="sm" />
+          {route && <p className="mt-2 text-ink-dim">Anmarsch: {route.name || 'Anmarschweg'}</p>}
+          {activity && (
+            <p className="mt-1 text-ink-dim">
+              Wildaktivität: <b className="text-ink">{activity.label}</b> ({activity.value}/5)
+            </p>
+          )}
+          {(h.phases ?? []).length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {h.phases!.map((p) => (
+                <span key={p} className="rounded-full border border-accent/60 px-2 py-0.5 text-sm text-accent">
+                  {p}
+                </span>
+              ))}
+            </div>
+          )}
+          {corrected && <p className="mt-2 text-sm text-ink-dim">Bedingungen teils von Hand korrigiert.</p>}
           {h.demo && <p className="mt-2 text-sm text-hint">Testdaten</p>}
         </div>
+
+        {(h.conclusion || h.mistakes || h.successDetails) && (
+          <div className="card mb-3">
+            {h.successDetails && <TextBlock title="Erfolg – Details">{h.successDetails}</TextBlock>}
+            {h.conclusion && <TextBlock title="Fazit">{h.conclusion}</TextBlock>}
+            {h.mistakes && <TextBlock title="Fehler / nächstes Mal anders">{h.mistakes}</TextBlock>}
+          </div>
+        )}
 
         <WeatherBlock h={h} loading={loading} onReload={reload} />
         {w && (
@@ -175,7 +215,7 @@ export function HuntDetail({ id }: { id: string }) {
               {sightings.map((s) => (
                 <li key={s.id}>
                   {fmtTime(new Date(s.time))} · {s.count}× {speciesMap.get(s.speciesId)?.name ?? s.speciesId}
-                  {s.sexAge.length ? ` (${s.sexAge.join(', ')})` : ''}
+                  {s.sexAge.length ? ` (${s.sexAge.join(', ')})` : ''}{s.ageEstimate ? ` · ${s.ageEstimate}` : ''}
                   {s.behavior ? `, ${s.behavior}` : ''}
                 </li>
               ))}

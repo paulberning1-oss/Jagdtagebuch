@@ -2,7 +2,7 @@
 import { MapPin, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Chip, ChipGroup, Section, Stepper } from '../components/ui'
-import { SIGHTING_SOURCES, type Sighting } from '../domain/hunt'
+import { AGE_DEFAULT, AGE_SUGGESTIONS, SIGHTING_SOURCES, type Sighting } from '../domain/hunt'
 import { BEHAVIORS } from '../domain/species'
 import { COMPASS_8, distance, type LatLng } from '../lib/geo'
 import { fromBerlinLocal, toBerlinLocal } from '../lib/time'
@@ -85,6 +85,22 @@ export function SightingEditor({
             />
           </Section>
         )}
+
+        <Section title="Altersschätzung (optional)">
+          <div className="mb-2 flex flex-wrap gap-2">
+            {(AGE_SUGGESTIONS[s.speciesId] ?? AGE_DEFAULT).map((a) => (
+              <Chip key={a} active={s.ageEstimate === a} onClick={() => set({ ageEstimate: s.ageEstimate === a ? '' : a })}>
+                {a}
+              </Chip>
+            ))}
+          </div>
+          <input
+            className="input"
+            value={s.ageEstimate ?? ''}
+            placeholder="oder frei, z. B. „ca. 3 Jahre, starker Träger“"
+            onChange={(e) => set({ ageEstimate: e.target.value })}
+          />
+        </Section>
 
         <Section title="Verhalten">
           <ChipGroup

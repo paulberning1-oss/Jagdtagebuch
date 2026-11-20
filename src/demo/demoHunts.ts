@@ -58,6 +58,8 @@ const clamp = (x: number) => Math.max(0.05, Math.min(0.9, x))
 
 export function buildDemoHunts(facs: Facility[], now = Date.now(), n = 42): { hunts: Hunt[]; sightings: Sighting[] } {
   const r = rng(815)
+  // Eigener Zufallsstrang für Texte/Aktivität – ändert die Muster von r nicht
+  const t = rng(4242)
   const hunts: Hunt[] = []
   const sightings: Sighting[] = []
   const totalWeight = STANDS.reduce((a, s) => a + s.weight, 0)
@@ -187,6 +189,7 @@ export function buildDemoHunts(facs: Facility[], now = Date.now(), n = 42): { hu
       disturbances: disturbed ? [pick(r, ['Spaziergänger', 'Hunde', 'Fahrzeuge', 'Jogger/Radfahrer'])] : [],
       notes: '',
       rating,
+      ...demoNotes(t, kills.length > 0, seen, sightings.some((s) => s.huntId === id), disturbed),
       env,
       weatherStatus: 'ok',
       weatherTries: 0,
@@ -196,4 +199,33 @@ export function buildDemoHunts(facs: Facility[], now = Date.now(), n = 42): { hu
     })
   }
   return { hunts, sightings }
+}
+
+const GOOD = [
+  'Ruhiger Abend, Wild zog früh aus.',
+  'Rehwild kam wie erwartet auf den Wildacker.',
+  'Sauen kamen erst, als der Mond über den Wald stieg.',
+  'Gute Sicht, Wind stand die ganze Zeit sauber.',
+]
+const BAD = [
+  'Kaum Bewegung, nur Vögel.',
+  'Wind drehte nach einer Stunde, danach nichts mehr.',
+  'Zu dunkel zum sicheren Ansprechen.',
+  'Wild stand im Einstand, kam nicht heraus.',
+]
+const MISTAKES = [
+  'Zu spät am Sitz – Wild stand schon draußen.',
+  'Über den Wechsel angegangen.',
+  'Wind vorher nicht geprüft, kam von hinten.',
+  'Zu früh abgebaumt.',
+  'Beim Aufbaumen zu laut gewesen.',
+]
+
+/** Wildaktivität, Fazit und Fehler für Test-Ansitze */
+function demoNotes(t: () => number, killed: boolean, seen: boolean, other: boolean, disturbed: boolean) {
+  const activity = killed ? 5 : seen ? 3 + Math.floor(t() * 2) : other ? 2 : 1 + Math.floor(t() * 2)
+  const good = killed || seen
+  const conclusion = t() < 0.75 ? (disturbed ? 'Störung durch Spaziergänger, danach lange Ruhe.' : pick(t, good ? GOOD : BAD)) : ''
+  const mistakes = !good && t() < 0.5 ? pick(t, MISTAKES) : ''
+  return { activity, conclusion, mistakes }
 }

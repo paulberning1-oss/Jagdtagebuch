@@ -29,7 +29,10 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
 - [x] 2 Eigene Objekte & Kategorien (Startliste Fluss/Bach, Graben, Agrarfläche mit Feldfrucht, Neuanpflanzung, Zaun, Dickung, Einstand, Weg, Störquelle)
 - [x] 3 Anmarschwege je Sitz mit Wind-Check entlang des Wegs + Empfehlung des besseren Wegs
 - [x] (Zusatz) Kompass auf der Karte, per Knopf ein-/ausblendbar, unten rechts
-- [ ] 4 Tagebuch erweitern: Datum, von–bis, Sitz, **gewählter Anmarschweg**; automatisch (vorausgefüllt, änderbar):
+- [x] 4 Tagebuch erweitern (umgesetzt: `routeId`, `overrides` + `effectiveEnv`, `phases` mit Vorschlägen aus
+  `src/domain/phases.ts`, `activity` 1–5, `successDetails`, `conclusion`, `mistakes`, Sichtung `ageEstimate`;
+  `src/journal/ConditionsEditor.tsx`, `src/components/SpeechTextarea.tsx`). Ursprünglicher Auftrag:
+  Datum, von–bis, Sitz, **gewählter Anmarschweg**; automatisch (vorausgefüllt, änderbar):
   Sonnenauf-/-untergang, Mondbeleuchtung %, Mond am Himmel, Temperatur, Wind Richtung/Stärke, Luftfeuchtigkeit,
   Luftdruck + Tendenz, Niederschlag; **jagdliche Phase/Besonderheit** (Vorschlag aus Jagdkalender, ab Schritt 5; änderbar, eigene ergänzbar);
   Anblick je Sichtung: Wildart, Anzahl, Geschlecht, **Altersschätzung (optional)**, Uhrzeit, Verhalten, Ort;
@@ -156,6 +159,13 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   Wind kommt, weiße Pfeile (Raster innerhalb der eigenen Grenze) in Windrichtung. Darunter alle Sitze geprüft (✓/⚠ mit Grund,
   geeignete zuerst). Sitz antippen → **Sitz-Check** (`WindPanel`, Kegel + Anmarschwege) mit „← Ganzes Revier“.
   Sitz-Check auch direkt aus dem Sitz-Dialog („Wind & Witterung prüfen“). Wind für die Reviermitte (Open-Meteo) oder von Hand.
+- Tagebuch-Erweiterung: Neue Felder sind **optional** (alte Einträge gültig, keine DB-Version nötig). Handkorrekturen der
+  Bedingungen in `hunt.overrides` – `env` (Messwerte) bleibt unverändert; Anzeige, Statistik und Assistent nutzen
+  **`effectiveEnv(h)`** (nie `h.env` direkt für Auswertungen). Jagdliche Phasen: `suggestPhases(start, targetSpecies)` aus
+  `DEFAULT_PHASES` (Verhaltenskalender, „Vorschlag – ungeprüft“, KEINE Jagd-/Schonzeiten) – wird in Schritt 5 bearbeitbar.
+  Spracheingabe `SpeechTextarea`: Web Speech API `de-DE` (`webkitSpeechRecognition`), sonst Hinweis auf Tastatur-Diktat.
+  Das Browser-Fenster der Claude-App blockiert das Mikrofon → dort nur der Hinweis; auf dem iPhone nach Freigabe.
+  Test-Ansitze haben Aktivität/Fazit/Fehler über eigenen Zufallsstrang (`rng(4242)`), Muster von `rng(815)` unverändert.
 - Kompass (`src/map/CompassRose.tsx`): Knopf in der rechten Kartenleiste, Rose unten rechts (über „Hinzufügen“).
   Karte ist eingenordet → N oben. Nadel = Blickrichtung des Handys (iOS `webkitCompassHeading` nach
   `DeviceOrientationEvent.requestPermission()` beim Tippen, Android `deviceorientationabsolute`). Setting `compassOpen` nur je Gerät.

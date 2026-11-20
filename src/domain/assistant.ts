@@ -7,7 +7,7 @@
 // Keine „künstliche Intelligenz“, sondern nachvollziehbare Statistik.
 import type { Facility } from '../db/db'
 import { angleDiff, COMPASS_8, compass8 } from '../lib/geo'
-import type { DayPeriod, Hunt, HuntEnv, PressureTrend, Sighting } from './hunt'
+import { effectiveEnv, type DayPeriod, type Hunt, type HuntEnv, type PressureTrend, type Sighting } from './hunt'
 import { evaluateRules, ruleScore, windFromOf, type Reason, type RuleContext } from './rules'
 
 /** Ab wie vielen ähnlichen Ansitzen die eigenen Daten die Hälfte ausmachen */
@@ -111,7 +111,7 @@ export function ownDataFor(stand: Facility, env: HuntEnv, hunts: Hunt[], byHunt:
     const o = outcomeOf(h, byHunt.get(h.id) ?? [], speciesId)
     if (o.kind === 'erlegt') erlegt++
     if (o.kind === 'anblick') anblick++
-    const w = similarity(env, h.env)
+    const w = similarity(env, effectiveEnv(h)!)
     n += w
     sum += w * o.score
   }
@@ -188,7 +188,7 @@ export function huntStats(hunts: Hunt[], sightings: Sighting[], speciesId: strin
     groups.set(key, g)
   }
   for (const x of done) {
-    const env = x.h.env
+    const env = effectiveEnv(x.h)
     if (group === 'sitz') put(x.h.standId ?? `frei:${x.h.standName}`, stands.find((s) => s.id === x.h.standId)?.name ?? x.h.standName, x)
     else if (!env) continue
     else if (group === 'tageszeit') put(env.sun.period, env.sun.period, x)
