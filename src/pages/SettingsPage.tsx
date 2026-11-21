@@ -1,6 +1,5 @@
 import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, GraduationCap } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AccountSection } from '../cloud/AccountSection'
 import { useToast } from '../components/ui'
@@ -40,15 +39,6 @@ export default function SettingsPage() {
   return (
     <div className="h-full overflow-y-auto p-4 pt-safe">
       <h1 className="mb-4 text-2xl font-bold">Mehr</h1>
-
-      <button className="card mb-4 flex w-full items-center gap-3 text-left active:scale-[0.99]" onClick={() => navigate('wissen')}>
-        <GraduationCap className="size-8 shrink-0 text-accent" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-lg font-bold">Jagdwissen & Jagdkalender</span>
-          <span className="block text-sm text-ink-dim">Verhalten je Wildart prüfen und ergänzen, Phasen im Jahr, deine Jagdzeiten</span>
-        </span>
-        <ChevronRight className="shrink-0 text-ink-dim" />
-      </button>
 
       <AccountSection />
       <TrashSection />

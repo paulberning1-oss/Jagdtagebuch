@@ -10,7 +10,7 @@ import { bestWindFor, huntStats, OWN_DATA_HALF, rateStands, type StandRating, ty
 import { weatherCodeText } from '../domain/environment'
 import { typeInfo } from '../domain/facilityTypes'
 import type { HuntEnv } from '../domain/hunt'
-import { fmtMonthDay, seasonsAt } from '../domain/knowledge'
+import { classStateText, seasonOverview } from '../domain/knowledge'
 import { inPhase, phaseLabel } from '../domain/phases'
 import { RULES, STRENGTHS, type RuleSettings } from '../domain/rules'
 import { startHunt } from '../journal/huntActions'
@@ -502,7 +502,7 @@ function CalendarBox({ time, speciesId, speciesName }: { time: number; speciesId
   const phases = calendar.filter(
     (p) => p.active !== false && inPhase(p, time) && (speciesId == null || p.speciesId == null || p.speciesId === speciesId),
   )
-  const states = speciesId ? seasonsAt(seasons, speciesId, time) : []
+  const states = speciesId ? (seasonOverview(seasons.filter((x) => x.speciesId === speciesId), time, names)[0]?.classes ?? []) : []
 
   return (
     <div className="mt-3 rounded-xl border border-line p-3">
@@ -528,9 +528,9 @@ function CalendarBox({ time, speciesId, speciesName }: { time: number; speciesId
       {speciesId &&
         (states.length ? (
           <div className="grid gap-1 text-sm">
-            {states.map(({ season, open }) => (
-              <p key={season.id} className={open ? 'text-good' : 'text-warn'}>
-                {season.label || speciesName}: {open ? 'Jagdzeit' : 'Schonzeit'} laut deiner Tabelle ({fmtMonthDay(season.from)}–{fmtMonthDay(season.to)})
+            {states.map((c) => (
+              <p key={c.label} className={c.open ? 'text-good' : 'text-warn'}>
+                {c.label || speciesName}: {classStateText(c)} (laut deiner Tabelle)
               </p>
             ))}
             <p className="text-xs text-ink-dim">Nur aus deiner eigenen Tabelle – maßgeblich ist das Jagdrecht deines Bundeslandes.</p>

@@ -43,10 +43,16 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   Abwurf, Schieben, Fegen, Haarwechsel, Äsung je Jahreszeit, Reaktion auf Wetter/Mond/Luftdruck/Störungen, Feldfrüchte/Ernte).
   Jeder Abschnitt Status „Vorschlag – ungeprüft“, bearbeitbar, eigene Ergänzungen (auch Wissen des Opas), auf „geprüft“ setzbar.
   Daraus Jagdkalender → schlägt jagdliche Phase in Tagebuch und Assistent vor. **Jagd-/Schonzeiten: eigene Tabelle, nur der Nutzer pflegt sie, nie KI-erzeugt.**
-  Umgesetzt: Seite `src/pages/KnowledgePage.tsx` (Route `#/wissen[/wissen|kalender|jagdzeiten[/<wildart>|allg|alle]]`,
-  Einstieg oben unter „Mehr“, Links aus Tagebuch-Formular und Assistent), Logik `src/domain/knowledge.ts`,
+  Umgesetzt: Seite `src/pages/KnowledgePage.tsx` (Route `#/wissen[/aktuell|wissen|kalender|jagdzeiten[/<wildart>|allg|alle]]`,
+  eigener Knopf **„Aktuell“ in der unteren Leiste** (nicht mehr unter „Mehr“), Links aus Tagebuch-Formular und Assistent), Logik `src/domain/knowledge.ts`,
   Startwissen `src/domain/knowledgeDefaults.ts`, Start-Kalender `DEFAULT_PHASES` in `src/domain/phases.ts`,
   Hooks `src/knowledge/hooks.ts`, `YearBar`, `MonthDayInput`.
+- [x] (Zusatz) Reiter **„Aktuell“** (`src/knowledge/CurrentTab.tsx`, Standard-Reiter von `#/wissen`): zum gewählten Tag (Heute, ‹ › Woche,
+  Monatsleiste ab jetzt 12 Monate vorwärts) „Jagdzeit – frei“ je Wildart/Klasse (bis wann, noch n Tage), „Was gerade läuft“ (Phasen),
+  „Demnächst“ (30 Tage: letzter Jagdtag, Jagdbeginn, Phasenbeginn), Schonzeit, „keine Jagdzeit“. Logik `seasonOverview`/`classStateText`.
+  Jagdzeiten-Vorlage Niedersachsen auf ausdrücklichen Wunsch des Nutzers (`src/domain/seasonsNiedersachsen.ts`, Quelle schonzeiten.de,
+  abgerufen 21.11.2026), per Knopf `NdsImport` übernommen (feste Kennungen `nds:…`, vorhandene Zeilen bleiben). Im Konto des Nutzers
+  am 21.11.2026 übernommen (76 Zeilen).
 - [ ] 6 KI-Grundlage: Supabase Edge Function ruft Claude (offizielles Anthropic-SDK) auf; API-Schlüssel NUR als Supabase-Secret,
   nie im Frontend/Repo; nur eingeloggte Nutzer; Tageslimit (einstellbar, Start 30/Tag); Modellname als Konfiguration;
   einmalige, deutliche Datenschutz-Zustimmung in der App (Revier-/Tagebuchdaten gehen an die Anthropic API);
@@ -165,7 +171,9 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   „Auf Vorschlag zurücksetzen“ und Löschen gehen über den Papierkorb (`trashKnowledge/CalendarPhase/Season`).
   Abschnitt: `text` (Vorschlag, änderbar) + `addition` (eigene Ergänzung, z. B. Opa) + `source`; eigene Abschnitte `own`.
   Kalender-Phasen: `active: false` = wird nicht vorgeschlagen. `suggestPhases(time, species, calendar, names)`.
-  **Jagdzeiten (`seasons`) haben keine Vorgaben im Code** – Zeile = Zeitraum, in dem bejagt werden darf; außerhalb „Schonzeit laut
+  **Jagdzeiten (`seasons`) gelten nie automatisch aus dem Code** – einzige Vorlage: Niedersachsen (vom Nutzer gewünscht, nur per Knopf).
+  `Season.name` = Wildart ohne Eintrag in der Wildarten-Liste (Kennung `nds:…`/`x:…`, z. B. Steinmarder), `closed` = keine Jagdzeit.
+  Mehrere Zeiträume einer Klasse = mehrere Zeilen mit gleichem `label`. Zeile = Zeitraum, in dem bejagt werden darf; außerhalb „Schonzeit laut
   deiner Tabelle“. Anzeige immer mit Hinweis „nur aus deiner Tabelle – maßgeblich ist das Landesjagdrecht“.
   Die KI (Schritt 7/8) bekommt nur geprüftes Wissen (ungeprüftes nur auf Wunsch, gekennzeichnet) und Jagdzeiten nur aus `seasons`.
 - **Rückfragen nie mit `window.confirm()`**, sondern `await ask('…', { ok, cancel, danger })` aus `src/components/ConfirmDialog.tsx`

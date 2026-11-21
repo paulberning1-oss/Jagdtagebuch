@@ -1,4 +1,4 @@
-import { BookOpen, Compass, Map as MapIcon, Menu, Telescope } from 'lucide-react'
+import { BookOpen, CalendarClock, Compass, Map as MapIcon, Menu, Telescope } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { AuthGate } from './cloud/auth'
@@ -21,6 +21,7 @@ const NAV: { route: Route; label: string; icon: ReactNode }[] = [
   { route: 'sichtungen', label: 'Sichtungen', icon: <Telescope /> },
   { route: 'tagebuch', label: 'Tagebuch', icon: <BookOpen /> },
   { route: 'assistent', label: 'Assistent', icon: <Compass /> },
+  { route: 'wissen', label: 'Aktuell', icon: <CalendarClock /> },
   { route: 'mehr', label: 'Mehr', icon: <Menu /> },
 ]
 
@@ -45,13 +46,13 @@ export default function App() {
           {route === 'mehr' && <SettingsPage />}
           {route === 'wissen' && <KnowledgePage key={parts.join('/')} parts={parts} />}
         </main>
-        <nav className="pb-safe grid grid-cols-5 border-t border-line bg-panel">
+        <nav className="pb-safe grid grid-cols-6 border-t border-line bg-panel">
           {NAV.map((n) => (
             <button
               key={n.route}
               onClick={() => navigate(n.route)}
-              className={`flex min-h-16 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${
-                route === n.route || (route === 'wissen' && n.route === 'mehr') ? 'text-accent' : 'text-ink-dim'
+              className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold ${
+                route === n.route ? 'text-accent' : 'text-ink-dim'
               }`}
             >
               {n.icon}

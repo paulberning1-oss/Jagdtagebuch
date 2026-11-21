@@ -5,7 +5,9 @@
 // Eintrag mit derselben Kennung ersetzt den Vorschlag. „Auf Vorschlag zurücksetzen“ = gespeicherten
 // Eintrag in „Zuletzt gelöscht“ verschieben (wiederherstellbar).
 //
-// Jagd- und Schonzeiten (`Season`) haben KEINE Vorgaben im Code – nur der Nutzer pflegt sie.
+// Jagd- und Schonzeiten (`Season`) haben KEINE Vorgaben im Code, die automatisch gelten – nur der Nutzer
+// pflegt sie. Ausnahme auf ausdrücklichen Wunsch: Vorlage Niedersachsen (`seasonsNiedersachsen.ts`), die der
+// Nutzer per Knopf in seine Tabelle übernimmt.
 import { berlinParts } from '../lib/time'
 import { DEFAULT_PHASES, inPhase, type PhaseDef } from './phases'
 
@@ -50,6 +52,10 @@ export interface Season {
   to: string
   /** z. B. Quelle/Stand („Landesjagdzeitenverordnung, Stand 2026“) */
   note?: string
+  /** Name der Wildart, wenn sie nicht in der Wildarten-Liste steht (z. B. „Steinmarder“, Kennung „nds:…“/„x:…“) */
+  name?: string
+  /** Keine Jagdzeit – ganzjährig geschont (from/to ohne Bedeutung) */
+  closed?: boolean
   updatedAt?: number
 }
 
@@ -129,7 +135,95 @@ export interface SeasonState {
   open: boolean
 }
 
+/** Darf laut eigener Tabelle zum Zeitpunkt bejagt werden? */
+export const seasonOpen = (s: Season, time: number) => !s.closed && inRange(s.from, s.to, time)
+
 /** Jagdzeiten einer Wildart zum Zeitpunkt – nur aus der eigenen Tabelle */
 export function seasonsAt(seasons: Season[], speciesId: string, time: number): SeasonState[] {
-  return seasons.filter((s) => s.speciesId === speciesId).map((season) => ({ season, open: inRange(season.from, season.to, time) }))
+  return seasons.filter((s) => s.speciesId === speciesId).map((season) => ({ season, open: seasonOpen(season, time) }))
 }
+
+/** Tage vom (Berliner) Datum bis zum nächsten „MM-TT“ (0 = heute) */
+export function daysUntil(target: string, time: number): number {
+  const d = dayOfYear(target) - dayOfYear(todayMonthDay(time))
+  return d < 0 ? d + 365 : d
+}
+
+/** Nimmt die Zeile den ganzen Jahreskreis ein? */
+export const allYear = (from: string, to: string) => dayOfYear(from) === 0 && dayOfYear(to) === 364
+
+// ---------- Übersicht „Aktuell“ ----------
+
+export interface ClassState {
+  label: string
+  /** Alle Zeilen dieser Klasse (mehrere Zeiträume möglich, z. B. Schmalrehe Frühjahr + Herbst) */
+  seasons: Season[]
+  open: boolean
+  closed: boolean
+  allYear: boolean
+  /** Bei Jagdzeit: Tage bis zum letzten Jagdtag (inkl. Tag 0 = heute letzter Tag) */
+  endsIn?: number
+  /** Letzter Jagdtag „MM-TT“ */
+  endDay?: string
+  /** Bei Schonzeit: Tage bis zum nächsten Jagdbeginn */
+  opensIn?: number
+  openDay?: string
+}
+
+export interface SpeciesSeasonState {
+  speciesId: string
+  name: string
+  classes: ClassState[]
+  anyOpen: boolean
+}
+
+/**
+ * Jagdzeiten aller Wildarten zum Zeitpunkt, je Wildart und Klasse zusammengefasst.
+ * Reihenfolge: `order` (Kennungen der Wildarten-Liste), danach weitere Arten in Tabellen-Reihenfolge.
+ */
+export function seasonOverview(seasons: Season[], time: number, names: Map<string, string>, order: string[] = []): SpeciesSeasonState[] {
+  const bySpecies = new Map<string, Season[]>()
+  for (const s of seasons) bySpecies.set(s.speciesId, [...(bySpecies.get(s.speciesId) ?? []), s])
+  const rank = (id: string) => {
+    const i = order.indexOf(id)
+    return i < 0 ? order.length : i
+  }
+  const ids = [...bySpecies.keys()].sort((a, b) => rank(a) - rank(b))
+  return ids.map((speciesId) => {
+    const list = bySpecies.get(speciesId)!
+    const byLabel = new Map<string, Season[]>()
+    for (const s of list) byLabel.set(s.label, [...(byLabel.get(s.label) ?? []), s])
+    const classes = [...byLabel.entries()].map(([label, ss]): ClassState => {
+      const closed = ss.every((s) => s.closed)
+      const ranges = ss.filter((s) => !s.closed)
+      const openNow = ranges.filter((s) => inRange(s.from, s.to, time))
+      const whole = ranges.some((s) => allYear(s.from, s.to))
+      const c: ClassState = { label, seasons: ss, open: openNow.length > 0, closed, allYear: whole }
+      if (c.open && !whole) {
+        const end = openNow.map((s) => ({ day: s.to, n: daysUntil(s.to, time) })).sort((a, b) => b.n - a.n)[0]
+        c.endsIn = end.n
+        c.endDay = end.day
+      } else if (!c.open && ranges.length) {
+        const next = ranges.map((s) => ({ day: s.from, n: daysUntil(s.from, time) })).sort((a, b) => a.n - b.n)[0]
+        c.opensIn = next.n
+        c.openDay = next.day
+      }
+      return c
+    })
+    const name = names.get(speciesId) ?? list.find((s) => s.name)?.name ?? speciesId
+    return { speciesId, name, classes, anyOpen: classes.some((c) => c.open) }
+  })
+}
+
+/** Kurztext zum Stand einer Klasse, z. B. „Jagdzeit bis 31.01. · noch 72 Tage“ */
+export function classStateText(c: ClassState): string {
+  if (c.closed) return 'keine Jagdzeit – ganzjährig geschont'
+  if (c.open && c.allYear) return 'Jagdzeit ganzjährig'
+  if (c.open && c.endDay != null && c.endsIn != null)
+    return `Jagdzeit bis ${fmtMonthDay(c.endDay)} · ${c.endsIn === 0 ? 'heute letzter Tag' : `noch ${c.endsIn + 1} Tage`}`
+  if (c.openDay != null && c.opensIn != null) return `Schonzeit · Jagdzeit ab ${fmtMonthDay(c.openDay)} (in ${c.opensIn} ${c.opensIn === 1 ? 'Tag' : 'Tagen'})`
+  return 'Schonzeit'
+}
+
+/** Notiz ohne den angehängten Quellen-Hinweis („… · Quelle: …“) */
+export const noteWithoutSource = (note?: string) => (note ?? '').replace(/(^|\s·\s)Quelle:.*$/, '').trim()

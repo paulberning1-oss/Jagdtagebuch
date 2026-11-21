@@ -1,15 +1,19 @@
 // Jagdwissen: je Wildart Verhaltenswissen + Jahreskalender, bearbeitbarer Jagdkalender,
-// eigene Jagd-/Schonzeiten (nur vom Nutzer gepflegt). Route: #/wissen[/<reiter>[/<wildart>]]
-import { ArrowLeft, Check, Pencil, Plus, RotateCcw, Trash2, Undo2 } from 'lucide-react'
+// eigene Jagd-/Schonzeiten (nur vom Nutzer gepflegt), Reiter „Aktuell“ (was ist heute frei, was läuft).
+// Route: #/wissen[/<reiter>[/<wildart>]] – eigener Knopf „Aktuell“ in der unteren Leiste.
+import { Check, Pencil, Plus, RotateCcw, Trash2, Undo2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { ask } from '../components/ConfirmDialog'
 import { SpeechTextarea } from '../components/SpeechTextarea'
 import { Chip, useToast } from '../components/ui'
 import { trashCalendarPhase, trashKnowledge, trashSeason } from '../db/trash'
 import {
+  allYear,
   fmtMonthDay,
   inRange,
   isDefaultId,
+  noteWithoutSource,
+  seasonOpen,
   STATUS_LABEL,
   type CalendarPhase,
   type KnowledgeEntry,
@@ -19,13 +23,16 @@ import {
 import { useSpecies } from '../journal/hooks'
 import { saveCalendarPhase, saveKnowledge, saveSeason, useCalendar, useKnowledge, useSeasons, useSpeciesNames } from '../knowledge/hooks'
 import { MonthDayInput } from '../knowledge/MonthDayInput'
+import { NDS_SOURCE } from '../domain/seasonsNiedersachsen'
+import { CurrentTab } from '../knowledge/CurrentTab'
+import { NdsImport } from '../knowledge/NdsImport'
 import { YearBar } from '../knowledge/YearBar'
 import { newId } from '../lib/id'
-import { navigate } from '../lib/router'
 import { fmtDate } from '../lib/time'
 
-type Tab = 'wissen' | 'kalender' | 'jagdzeiten'
+type Tab = 'aktuell' | 'wissen' | 'kalender' | 'jagdzeiten'
 const TABS: [Tab, string][] = [
+  ['aktuell', 'Aktuell'],
   ['wissen', 'Wissen'],
   ['kalender', 'Kalender'],
   ['jagdzeiten', 'Jagdzeiten'],
@@ -39,25 +46,28 @@ const sid = (key: string) => (key === ALLG ? null : key)
 const TRASH_NOTE = 'Wiederherstellbar unter „Mehr → Zuletzt gelöscht“.'
 
 export default function KnowledgePage({ parts }: { parts: string[] }) {
-  const [tab, setTab] = useState<Tab>(TABS.some(([t]) => t === parts[0]) ? (parts[0] as Tab) : 'wissen')
+  const [tab, setTab] = useState<Tab>(TABS.some(([t]) => t === parts[0]) ? (parts[0] as Tab) : 'aktuell')
   const [species, setSpecies] = useState<string>(parts[1] ?? 'rehwild')
 
   return (
     <div className="h-full overflow-y-auto p-4 pt-safe">
-      <div className="mb-3 flex items-center gap-2">
-        <button className="btn-round !size-12" onClick={() => navigate('mehr')} aria-label="Zurück zu Mehr">
-          <ArrowLeft />
-        </button>
-        <h1 className="flex-1 text-2xl font-bold">Jagdwissen</h1>
-      </div>
-      <div className="mb-4 grid grid-cols-3 gap-2">
+      <h1 className="mb-3 text-2xl font-bold">{tab === 'aktuell' ? 'Jagd aktuell' : 'Jagdwissen'}</h1>
+      <div className="mb-4 grid grid-cols-4 gap-1.5">
         {TABS.map(([t, label]) => (
-          <button key={t} className={`btn !min-h-12 !px-2 !text-base ${tab === t ? 'btn-primary' : ''}`} onClick={() => setTab(t)}>
+          <button key={t} className={`btn !min-h-12 !rounded-xl !px-1 !text-sm ${tab === t ? 'btn-primary' : ''}`} onClick={() => setTab(t)}>
             {label}
           </button>
         ))}
       </div>
-      {tab !== 'jagdzeiten' && <SpeciesChips value={species} onChange={setSpecies} withAll={tab === 'kalender'} />}
+      {tab === 'aktuell' && (
+        <CurrentTab
+          onOpen={(t, sp) => {
+            if (sp) setSpecies(sp)
+            setTab(t)
+          }}
+        />
+      )}
+      {(tab === 'wissen' || tab === 'kalender') && <SpeciesChips value={species} onChange={setSpecies} withAll={tab === 'kalender'} />}
       {tab === 'wissen' && <KnowledgeTab speciesKey={species === ALLE ? 'rehwild' : species} onCalendar={() => setTab('kalender')} />}
       {tab === 'kalender' && <CalendarTab speciesKey={species} onPickSpecies={setSpecies} />}
       {tab === 'jagdzeiten' && <SeasonsTab />}
@@ -445,6 +455,9 @@ function PhaseEditor({ phase, isNew = false, onDone }: { phase: CalendarPhase; i
 
 // ---------- Jagdzeiten (nur vom Nutzer gepflegt) ----------
 
+/** Auswahl „Andere Wildart“ (nicht in der Wildarten-Liste) */
+const OTHER = '__andere'
+
 function SeasonsTab() {
   const seasons = useSeasons()
   const species = useSpecies()
@@ -454,9 +467,13 @@ function SeasonsTab() {
   const now = Date.now()
 
   if (!seasons) return <p className="text-ink-dim">Lade…</p>
-  const groups = species.map((s) => ({ s, list: seasons.filter((x) => x.speciesId === s.id) })).filter((g) => g.list.length)
-  // Jagdzeiten zu inzwischen gelöschten Wildarten trotzdem zeigen
-  const orphans = seasons.filter((x) => !species.some((s) => s.id === x.speciesId))
+  const groups = species.map((s) => ({ key: s.id, name: s.name, list: seasons.filter((x) => x.speciesId === s.id) })).filter((g) => g.list.length)
+  // Weitere Arten (nicht in der Wildarten-Liste, z. B. Steinmarder) bzw. inzwischen gelöschte Wildarten
+  const otherIds = [...new Set(seasons.filter((x) => !names.has(x.speciesId)).map((x) => x.speciesId))]
+  const others = otherIds.map((id) => {
+    const list = seasons.filter((x) => x.speciesId === id)
+    return { key: id, name: list.find((x) => x.name)?.name ?? 'Gelöschte Wildart', list }
+  })
 
   const startNew = () => {
     setIsNew(true)
@@ -468,14 +485,19 @@ function SeasonsTab() {
       <div className="mb-4 rounded-xl border-2 border-warn/60 bg-panel p-3 text-sm">
         <p className="mb-1 font-bold text-warn">Diese Tabelle pflegst nur du.</p>
         <p className="text-ink-dim">
-          Die App und die KI tragen hier nichts ein und erfinden keine Jagd- oder Schonzeiten. Maßgeblich sind das Bundesjagdgesetz und das
-          Jagdrecht deines Bundeslandes (Jagdzeitenverordnung) – übernimm die Zeiten von dort und notiere die Quelle mit Stand.
+          Die KI trägt hier nichts ein und erfindet keine Jagd- oder Schonzeiten. Maßgeblich sind das Bundesjagdgesetz und das Jagdrecht
+          deines Bundeslandes (in Niedersachsen die DVO-NJagdG) – übernimm die Zeiten von dort bzw. aus der Vorlage und prüfe sie.
         </p>
         <p className="mt-1 text-ink-dim">
           Eine Zeile = Zeitraum, in dem diese Wildart/Klasse bejagt werden darf. Außerhalb davon zeigt die App „Schonzeit laut deiner
           Tabelle“.
         </p>
       </div>
+
+      <section className="card mb-4">
+        <h2 className="mb-2 text-lg font-bold">Vorlage Niedersachsen</h2>
+        <NdsImport compact />
+      </section>
 
       {editing ? (
         <SeasonEditor
@@ -487,19 +509,22 @@ function SeasonsTab() {
           }}
         />
       ) : (
-        <button className="btn btn-primary mb-4 w-full" onClick={startNew}>
+        <button className="btn mb-4 w-full" onClick={startNew}>
           <Plus /> Jagdzeit eintragen
         </button>
       )}
 
       {!seasons.length && !editing && <p className="text-ink-dim">Noch keine Jagdzeiten eingetragen.</p>}
       {seasons.length > 0 && <p className="mb-2 text-sm text-ink-dim">Stand heute, {fmtDate(new Date(now))}:</p>}
-      {[...groups, ...(orphans.length ? [{ s: null, list: orphans }] : [])].map(({ s, list }) => (
-        <section key={s?.id ?? 'x'} className="card mb-3">
-          <h2 className="mb-2 text-lg font-bold">{s?.name ?? 'Gelöschte Wildart'}</h2>
+      {[...groups, ...others].map(({ key, name, list }) => (
+        <section key={key} className="card mb-3">
+          <h2 className="mb-2 text-lg font-bold">{name}</h2>
           <div className="grid gap-2">
             {list.map((x) => {
-              const open = inRange(x.from, x.to, now)
+              const open = seasonOpen(x, now)
+              const hint = noteWithoutSource(x.note)
+              // Quelle der Vorlage steht oben einmal – nur abweichende Quellen je Zeile zeigen
+              const src = x.note?.includes('Quelle:') && !x.note.includes(NDS_SOURCE) ? x.note.slice(x.note.indexOf('Quelle:')) : ''
               return (
                 <button
                   key={x.id}
@@ -510,14 +535,15 @@ function SeasonsTab() {
                   }}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold">{x.label || names.get(x.speciesId) || 'Jagdzeit'}</p>
+                    <p className="font-semibold">{x.label || name}</p>
                     <p className="text-ink-dim">
-                      {fmtMonthDay(x.from)} – {fmtMonthDay(x.to)}
+                      {x.closed ? 'keine Jagdzeit' : allYear(x.from, x.to) ? 'ganzjährig' : `${fmtMonthDay(x.from)} – ${fmtMonthDay(x.to)}`}
                     </p>
-                    {x.note?.trim() && <p className="text-sm text-ink-dim">{x.note}</p>}
+                    {hint && <p className="text-sm text-ink-dim">{hint}</p>}
+                    {src && <p className="text-xs text-ink-dim/80">{src}</p>}
                   </div>
                   <span className={`badge shrink-0 ${open ? 'border-good/60 text-good' : 'border-warn/60 text-warn'}`}>
-                    {open ? 'heute Jagdzeit' : 'heute Schonzeit'}
+                    {open ? 'heute Jagdzeit' : x.closed ? 'geschont' : 'heute Schonzeit'}
                   </span>
                 </button>
               )
@@ -535,15 +561,24 @@ function SeasonEditor({ season, isNew, onDone }: { season: Season; isNew: boolea
   const names = useSpeciesNames()
   const [d, setD] = useState(season)
   const set = (patch: Partial<Season>) => setD((x) => ({ ...x, ...patch }))
+  const isOther = !names.has(d.speciesId)
+  const displayName = names.get(season.speciesId) ?? season.name ?? season.speciesId
 
   const save = async () => {
-    await saveSeason({ ...d, label: d.label.trim() })
+    let { speciesId, name } = d
+    if (isOther) {
+      name = name?.trim()
+      if (!name) return toast('Bitte den Namen der Wildart eingeben', 'error')
+      // Neue „andere“ Art: Kennung aus dem Namen; bestehende behalten ihre Kennung
+      if (speciesId === OTHER) speciesId = `x:${name.toLowerCase().replace(/[^a-z0-9äöüß]+/g, '-')}`
+    } else name = undefined
+    await saveSeason({ ...d, speciesId, name, label: d.label.trim() })
     toast('Jagdzeit gespeichert', 'success')
     onDone()
   }
   const remove = async () => {
     if (!(await ask(`Diese Jagdzeit löschen?\n\n${TRASH_NOTE}`))) return
-    await trashSeason(season, names.get(season.speciesId) ?? season.speciesId)
+    await trashSeason(season, displayName)
     toast(`Gelöscht – ${TRASH_NOTE}`)
     onDone()
   }
@@ -559,23 +594,43 @@ function SeasonEditor({ season, isNew, onDone }: { season: Season; isNew: boolea
               {s.name}
             </option>
           ))}
+          {isOther && d.speciesId !== OTHER && <option value={d.speciesId}>{d.name ?? 'Andere Wildart'}</option>}
+          <option value={OTHER}>Andere Wildart (nur Jagdzeit) …</option>
         </select>
       </label>
+      {isOther && (
+        <label className="mb-3 block">
+          <span className="label">Name der Wildart</span>
+          <input className="input" value={d.name ?? ''} onChange={(e) => set({ name: e.target.value })} placeholder="z. B. Steinmarder" />
+        </label>
+      )}
       <label className="mb-3 block">
         <span className="label">Klasse / Bezeichnung</span>
         <input className="input" value={d.label} onChange={(e) => set({ label: e.target.value })} placeholder="z. B. Böcke, Schmalrehe, Frischlinge" />
       </label>
-      <div className="mb-3">
-        <span className="label">Jagdzeit von</span>
-        <MonthDayInput label="Jagdzeit von" value={d.from} onChange={(from) => set({ from })} />
-      </div>
-      <div className="mb-3">
-        <span className="label">bis</span>
-        <MonthDayInput label="Jagdzeit bis" value={d.to} onChange={(to) => set({ to })} />
-      </div>
+      <button className={`btn mb-3 w-full !text-base ${d.closed ? '!border-warn/60 text-warn' : ''}`} onClick={() => set({ closed: !d.closed })}>
+        {d.closed ? 'Keine Jagdzeit (ganzjährig geschont) – ändern' : 'Keine Jagdzeit? Hier antippen'}
+      </button>
+      {!d.closed && (
+        <>
+          <div className="mb-3">
+            <span className="label">Jagdzeit von</span>
+            <MonthDayInput label="Jagdzeit von" value={d.from} onChange={(from) => set({ from })} />
+          </div>
+          <div className="mb-3">
+            <span className="label">bis</span>
+            <MonthDayInput label="Jagdzeit bis" value={d.to} onChange={(to) => set({ to })} />
+          </div>
+        </>
+      )}
       <label className="mb-4 block">
-        <span className="label">Quelle / Stand</span>
-        <input className="input" value={d.note ?? ''} onChange={(e) => set({ note: e.target.value })} placeholder="z. B. Landesjagdzeitenverordnung, Stand 2026" />
+        <span className="label">Hinweis / Quelle / Stand</span>
+        <textarea
+          className="input !min-h-20 py-3"
+          value={d.note ?? ''}
+          onChange={(e) => set({ note: e.target.value })}
+          placeholder="z. B. Landesjagdzeitenverordnung, Stand 2026"
+        />
       </label>
       <div className="flex gap-2">
         {!isNew && (
