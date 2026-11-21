@@ -2,6 +2,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { BookOpen, CalendarDays, ChevronDown, ChevronUp, CloudOff, Compass, Loader2, Minus, Play, Plus, RotateCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { KiRecommendation } from '../ai/KiRecommendation'
 import { usePlanConditions } from '../assistant/usePlanConditions'
 import { Chip, useToast } from '../components/ui'
 import { db, type Facility } from '../db/db'
@@ -186,6 +187,19 @@ function Recommendation() {
         {env && <ConditionsView env={env} weather={weather} manualWind={manualWind} setManualWind={setManualWind} />}
         <CalendarBox time={start} speciesId={speciesId} speciesName={speciesName} />
       </section>
+
+      <KiRecommendation
+        start={start}
+        end={end}
+        speciesId={speciesId}
+        speciesName={speciesName}
+        env={env}
+        ratings={ratings}
+        facilities={facilities}
+        hunts={hunts}
+        sightings={sightings}
+        scent={{ length: scentLength, width: scentWidth }}
+      />
 
       {!ratings && <p className="text-ink-dim">Berechne…</p>}
       <div className="grid gap-3 pb-4">

@@ -10,6 +10,7 @@
 // Anleitung: docs/KI-EINRICHTUNG.md
 import Anthropic from 'npm:@anthropic-ai/sdk@1.12.0'
 import { createClient } from 'npm:@supabase/supabase-js@2.119.2'
+import { TASK_SCHEMAS } from './schemas.ts'
 import { allowedUsers, checkRequest, dailyLimit, pickModel, type KiTask } from './validate.ts'
 
 const CORS = {
@@ -39,7 +40,14 @@ Regeln:
 const TASK_PROMPT: Record<KiTask, string> = {
   test: 'Dies ist ein Verbindungstest der App. Antworte mit genau einem kurzen Satz.',
   status: '',
-  empfehlung: 'Aufgabe: Ansitzempfehlung aus den mitgeschickten Daten.',
+  empfehlung: `Aufgabe: Ansitzempfehlung für den geplanten Ansitz in der letzten Nachricht.
+- Wähle genau einen Sitz aus den Revierdaten (Kennung [id: …] übernehmen) und, wenn sinnvoll, eine Alternative. Erfinde keine Sitze.
+- Anmarschweg nur aus den eingezeichneten Wegen dieses Sitzes (Kennung übernehmen); die Wind-Prüfung der Wege bei diesem Wind ist mitgeschickt. Ist keiner eingezeichnet, Feld leer lassen und im Hinweis sagen, wie man bei diesem Wind anlaufen sollte (aus Richtungen/Entfernungen ableiten, als Vermutung kennzeichnen).
+- Kombiniere: Wind und Witterungskegel zu Wechseln/Einständen/Kirrung, Schussfeld, Sonne/Licht, Mond, Luftdruck, jagdliche Phase, die eigenen Ansitze unter ähnlichen Bedingungen (mit Fazit und Fehlern) und die Punktbewertung der App. Weiche begründet von der Punktbewertung ab, wenn die Daten es hergeben.
+- Erwartung: Wildart und Zeitfenster aus Tagebuch und Jagdwissen; Uhrzeiten an Sonnenauf-/-untergang des Tages ausrichten.
+- Jede Aussage mit art und herkunft kennzeichnen. Tagebuch-Aussagen mit Zahl der Ansitze. Bei wenig Daten (z. B. unter 5 passenden Ansitzen) das in „datenlage“ sagen.
+- Jagdzeit nur aus der mitgeschickten Tabelle; fehlt sie dort, Feld leer lassen.
+- Kurz und praxisnah, kein Fülltext.`,
   chat: 'Aufgabe: Fragen des Jägers zu seinem Revier und seinen Daten beantworten.',
   rueckmeldung: 'Aufgabe: Rückmeldung nach dem Ansitz zu Fazit und Fehlern, mit konkreten Tipps.',
 }
@@ -105,7 +113,11 @@ Deno.serve(async (req) => {
     const res = await client.beta.messages.create({
       model,
       max_tokens: r.task === 'test' ? 2000 : 12000,
-      output_config: { effort: r.task === 'test' ? 'low' : 'medium' },
+      output_config: {
+        effort: r.task === 'test' ? 'low' : 'medium',
+        // feste Antwortstruktur je Aufgabe (z. B. Empfehlung als JSON)
+        ...(TASK_SCHEMAS[r.task] ? { format: { type: 'json_schema' as const, schema: TASK_SCHEMAS[r.task]! } } : {}),
+      },
       // Bei einer Ablehnung durch Sicherheitsfilter automatisch ein passendes Ersatzmodell (nicht bei Haiku)
       ...(model.startsWith('claude-haiku') ? {} : { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const }),
       system,

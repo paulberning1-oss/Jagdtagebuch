@@ -27,6 +27,10 @@ export interface Settings {
   kiConsent: { at: number; version: number } | null
   /** Gewähltes KI-Modell ('' = Standard des Servers) */
   kiModel: string
+  /** KI bekommt auch ungeprüftes Jagdwissen (gekennzeichnet) */
+  kiUnverified: boolean
+  /** KI bekommt auch Testdaten (Beispielrevier) */
+  kiDemo: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +45,8 @@ export const DEFAULT_SETTINGS: Settings = {
   compassOpen: false,
   kiConsent: null,
   kiModel: '',
+  kiUnverified: false,
+  kiDemo: false,
 }
 
 export async function getSetting<K extends keyof Settings>(key: K): Promise<Settings[K]> {

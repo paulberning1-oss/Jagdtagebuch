@@ -66,10 +66,17 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   Funktion prüft selbst per `auth.getUser`). App: `src/ai/ki.ts` (`askKi` prüft Zustimmung, `kiStatus`, Fehlercodes → Text),
   `src/ai/KiSection.tsx` unter „Mehr“ (Zustimmung `kiConsent` mit `KI_CONSENT_VERSION`, Modell `kiModel`, Verbindungstest,
   Konto-Kennung). Anleitung `docs/KI-EINRICHTUNG.md`. Zustimmung nie stellvertretend in der Vorschau erteilen (synchronisiert!).
-- [ ] 7 KI-Ansitzempfehlung: Kontext = Datum, Zeitfenster, Wettervorhersage, Sonne/Mond, jagdliche Phase, geprüftes Jagdwissen
+- [x] 7 KI-Ansitzempfehlung: Kontext = Datum, Zeitfenster, Wettervorhersage, Sonne/Mond, jagdliche Phase, geprüftes Jagdwissen
   (ungeprüftes nur auf Wunsch, gekennzeichnet), Revier (Sitze mit Schussfeld, Anmarschwege, eigene Objekte, Wechsel, Flächen –
   mit Richtungen und Entfernungen), passendste Tagebucheinträge inkl. Fazit/Fehler + Statistik, bisherige Punktbewertung;
   Testdaten nur, wenn ausdrücklich eingeschaltet. Antwort: Sitz, Anmarschweg, Erwartung (Wildart, Uhrzeit), worauf achten, warum.
+  Umgesetzt: Kontext `src/ai/planContext.ts` (`buildPlanContext` → `context` stabil/gecacht: Revier relativ zur Reviermitte,
+  je Sitz Schussfeld + Objekte bis 400 m mit Richtung/Entfernung/„im Schussfeld“, Anmarschwege, Jagdwissen, Jagdzeiten-Tabelle,
+  Statistik – OHNE Plan-Datum; `question`: Zeit, Sonne/Mond, Wetter, Phasen, Jagdzeit am Tag, Punktbewertung mit Gründen +
+  Wegprüfung bei diesem Wind, 12 ähnlichste Ansitze mit Fazit/Fehlern). Antwort als Structured Output `EMPFEHLUNG_SCHEMA`
+  (`supabase/functions/ki/schemas.ts`, Server legt das Format fest; App liest mit `parseEmpfehlung`). Anzeige
+  `src/ai/KiRecommendation.tsx` im Assistenten (Herkunft je Aussage farbig, unbekannte Sitz-/Weg-Kennungen werden gewarnt,
+  „Was wird gesendet?“ auch vor der Zustimmung). Settings `kiUnverified`, `kiDemo` (Standard aus).
 - [ ] 8 KI-Chat zu Revier und Daten + Rückmeldung nach dem Ansitz (zu Fazit und Fehlern, konkrete Tipps).
   System-Prompt-Regeln: nur mitgeschicktes Wissen und eigene Daten, nichts erfinden; jede Aussage kennzeichnen
   („aus deinem Tagebuch (n Ansitze)“ / „aus dem Jagdwissen“ / „Vermutung“); offen sagen, wenn Daten nicht reichen;
