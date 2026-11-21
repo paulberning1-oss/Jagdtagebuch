@@ -26,14 +26,15 @@ jobs:
             echo "::warning::SUPABASE_ACCESS_TOKEN oder VITE_SUPABASE_URL fehlt – KI-Funktion wird nicht bereitgestellt (siehe docs/KI-EINRICHTUNG.md)."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: steps.check.outputs.skip != 'true'
       - uses: supabase/setup-cli@v1
         if: steps.check.outputs.skip != 'true'
         with:
-          version: latest
+          # feste Version – „latest“ fragt GitHub ohne Anmeldung und scheitert am Abruf-Limit
+          version: 3.2.0
       - name: Funktion „ki“ bereitstellen
         if: steps.check.outputs.skip != 'true'
         run: |
           REF=$(echo "$SUPABASE_URL" | sed -E 's#^https://([^.]+)\..*#\1#')
-          supabase functions deploy ki --project-ref "$REF" --no-verify-jwt
+          supabase functions deploy ki --project-ref "$REF" --no-verify-jwt --use-api
