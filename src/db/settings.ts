@@ -23,6 +23,10 @@ export interface Settings {
   ruleSettings: RuleSettings
   /** Kompass auf der Karte eingeblendet (nur dieses Gerät) */
   compassOpen: boolean
+  /** Zustimmung zur Datenübertragung an die Claude-API (für das Konto, synchronisiert) */
+  kiConsent: { at: number; version: number } | null
+  /** Gewähltes KI-Modell ('' = Standard des Servers) */
+  kiModel: string
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,6 +39,8 @@ export const DEFAULT_SETTINGS: Settings = {
   assistantSpecies: 'rehwild',
   ruleSettings: {},
   compassOpen: false,
+  kiConsent: null,
+  kiModel: '',
 }
 
 export async function getSetting<K extends keyof Settings>(key: K): Promise<Settings[K]> {

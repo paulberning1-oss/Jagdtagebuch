@@ -1,6 +1,7 @@
 import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
+import { KiSection } from '../ai/KiSection'
 import { AccountSection } from '../cloud/AccountSection'
 import { useToast } from '../components/ui'
 import { db } from '../db/db'
@@ -41,6 +42,7 @@ export default function SettingsPage() {
       <h1 className="mb-4 text-2xl font-bold">Mehr</h1>
 
       <AccountSection />
+      <KiSection />
       <TrashSection />
 
       <section className="card mb-4">

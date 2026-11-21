@@ -53,10 +53,19 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   Jagdzeiten-Vorlage Niedersachsen auf ausdrücklichen Wunsch des Nutzers (`src/domain/seasonsNiedersachsen.ts`, Quelle schonzeiten.de,
   abgerufen 21.11.2026), per Knopf `NdsImport` übernommen (feste Kennungen `nds:…`, vorhandene Zeilen bleiben). Im Konto des Nutzers
   am 21.11.2026 übernommen (76 Zeilen).
-- [ ] 6 KI-Grundlage: Supabase Edge Function ruft Claude (offizielles Anthropic-SDK) auf; API-Schlüssel NUR als Supabase-Secret,
+- [x] 6 KI-Grundlage: Supabase Edge Function ruft Claude (offizielles Anthropic-SDK) auf; API-Schlüssel NUR als Supabase-Secret,
   nie im Frontend/Repo; nur eingeloggte Nutzer; Tageslimit (einstellbar, Start 30/Tag); Modellname als Konfiguration;
   einmalige, deutliche Datenschutz-Zustimmung in der App (Revier-/Tagebuchdaten gehen an die Anthropic API);
   Schritt-für-Schritt-Anleitung: API-Schlüssel anlegen, als Secret hinterlegen, Ausgabenlimit setzen. Prompt-Caching für den stabilen Teil.
+  Umgesetzt: Edge Function `supabase/functions/ki/index.ts` (Deno, `npm:@anthropic-ai/sdk@1.12.0`, `client.beta.messages.create`
+  mit `fallbacks: 'default'` außer Haiku, `effort` low/medium), Prüfung `validate.ts` (in Vitest getestet: `src/ai/ki.test.ts`).
+  Secrets in Supabase: `ANTHROPIC_API_KEY`, `KI_NUTZER` (freigeschaltete Konto-Kennungen; leer = niemand), `KI_TAGESLIMIT` (30),
+  `KI_MODELL`. Tageslimit: Tabelle `ki_usage` + RPC `ki_usage_today`/`ki_count_use` (`supabase/ki.sql`, security definer);
+  vorher prüfen, erst nach Antwort zählen. Prompt: feste Regeln `RULES` (Cache-Marke) → stabiler `context` aus der App (Cache-Marke)
+  → Aufgabe → Nachrichten. Bereitstellung: `.github/workflows/deploy-ki.yml` (Secret `SUPABASE_ACCESS_TOKEN`, `--no-verify-jwt`,
+  Funktion prüft selbst per `auth.getUser`). App: `src/ai/ki.ts` (`askKi` prüft Zustimmung, `kiStatus`, Fehlercodes → Text),
+  `src/ai/KiSection.tsx` unter „Mehr“ (Zustimmung `kiConsent` mit `KI_CONSENT_VERSION`, Modell `kiModel`, Verbindungstest,
+  Konto-Kennung). Anleitung `docs/KI-EINRICHTUNG.md`. Zustimmung nie stellvertretend in der Vorschau erteilen (synchronisiert!).
 - [ ] 7 KI-Ansitzempfehlung: Kontext = Datum, Zeitfenster, Wettervorhersage, Sonne/Mond, jagdliche Phase, geprüftes Jagdwissen
   (ungeprüftes nur auf Wunsch, gekennzeichnet), Revier (Sitze mit Schussfeld, Anmarschwege, eigene Objekte, Wechsel, Flächen –
   mit Richtungen und Entfernungen), passendste Tagebucheinträge inkl. Fazit/Fehler + Statistik, bisherige Punktbewertung;
