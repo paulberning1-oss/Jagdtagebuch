@@ -71,7 +71,9 @@ export function kiErrorText(code: string, info: { used?: number; limit?: number;
     case 'limit':
       return `Tageslimit erreicht (${info.used ?? '?'} von ${info.limit ?? '?'} Anfragen heute). Morgen geht es weiter.`
     case 'api_key':
-      return 'Der Claude-API-Schlüssel auf dem Server ist ungültig oder gesperrt.'
+      return `Anthropic lehnt den API-Schlüssel ab (ungültig, gelöscht oder ohne Berechtigung)${info.detail ? ` – Meldung: ${info.detail}` : ''}.`
+    case 'api_key_format':
+      return 'Der hinterlegte API-Schlüssel beginnt nicht mit „sk-ant-“ – bitte das Secret ANTHROPIC_API_KEY in Supabase prüfen (nur den Schlüssel, ohne Namen davor).'
     case 'billing':
       return 'Anthropic hat die Anfrage abgelehnt: kein Guthaben oder Ausgabenlimit erreicht (console.anthropic.com → Billing/Limits).'
     case 'rate_limit':

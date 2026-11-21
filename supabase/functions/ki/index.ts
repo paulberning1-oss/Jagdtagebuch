@@ -52,6 +52,9 @@ const TASK_PROMPT: Record<KiTask, string> = {
   rueckmeldung: 'Aufgabe: Rückmeldung nach dem Ansitz zu Fazit und Fehlern, mit konkreten Tipps.',
 }
 
+/** Schlüssel ohne versehentliche Leerzeichen, Zeilenumbrüche oder Anführungszeichen (häufiger Kopierfehler) */
+const cleanKey = (raw: string | undefined) => (raw ?? '').trim().replace(/^['"„“”]+|['"„“”]+$/g, '').trim()
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json(405, { error: 'method' })
@@ -85,11 +88,13 @@ Deno.serve(async (req) => {
   if (r.task === 'status') {
     const { data, error } = await supabase.rpc('ki_usage_today')
     if (error) return json(500, { error: 'quota_table', detail: error.message })
-    return json(200, { used: data ?? 0, limit, model: defaultModel, configured: !!Deno.env.get('ANTHROPIC_API_KEY') })
+    const key = cleanKey(Deno.env.get('ANTHROPIC_API_KEY'))
+    return json(200, { used: data ?? 0, limit, model: defaultModel, configured: !!key, keyFormatOk: key.startsWith('sk-ant-') })
   }
 
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+  const apiKey = cleanKey(Deno.env.get('ANTHROPIC_API_KEY'))
   if (!apiKey) return json(503, { error: 'not_configured' })
+  if (!apiKey.startsWith('sk-ant-')) return json(503, { error: 'api_key_format' })
 
   // ---- Tageslimit: vorher prüfen, nach erfolgreicher Antwort zählen (Fehler kosten keine Anfrage) ----
   const { data: before, error: quotaError } = await supabase.rpc('ki_usage_today')
@@ -138,7 +143,8 @@ Deno.serve(async (req) => {
     if (res.stop_reason === 'refusal') return json(200, { error: 'refusal', model: res.model, used, limit, usage })
     return json(200, { text, model: res.model, stopReason: res.stop_reason, used, limit, usage })
   } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) return json(502, { error: 'api_key' })
+    if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError)
+      return json(502, { error: 'api_key', status: e.status, detail: e.message })
     if (e instanceof Anthropic.RateLimitError) return json(502, { error: 'rate_limit' })
     if (e instanceof Anthropic.BadRequestError && /credit|billing|balance|limit/i.test(e.message)) return json(502, { error: 'billing', detail: e.message })
     if (e instanceof Anthropic.APIError) return json(502, { error: 'api', status: e.status, detail: e.message })
