@@ -42,7 +42,7 @@ export function TrashSection() {
         {entries.length > 1 && !sel.selecting && <SelectButton s={sel} />}
       </div>
       <p className="mb-3 text-ink-dim">
-        Gelöschte Objekte, Grenzen, Ansitze, Sichtungen, Wildarten und Kategorien bleiben {TRASH_DAYS} Tage hier und lassen sich
+        Gelöschte Objekte, Grenzen, Ansitze, Sichtungen, Wildarten, Kategorien und Jagdwissen bleiben {TRASH_DAYS} Tage hier und lassen sich
         wiederherstellen – auch auf deinen anderen Geräten.
       </p>
       {!entries.length && <p className="text-ink-dim">Nichts gelöscht.</p>}

@@ -16,7 +16,7 @@ import { DEFAULT_SPECIES } from '../domain/species'
 import { PHOTO_BUCKET, supabase } from './supabase'
 
 /** Tabellen, die mit dem Konto abgeglichen werden */
-export const SYNCED_TABLES = ['species', 'settings', 'categories', 'facilities', 'boundaries', 'photos', 'overlays', 'hunts', 'sightings', 'trash'] as const
+export const SYNCED_TABLES = ['species', 'settings', 'categories', 'facilities', 'boundaries', 'photos', 'overlays', 'hunts', 'sightings', 'knowledge', 'calendar', 'seasons', 'trash'] as const
 type SyncedTable = (typeof SYNCED_TABLES)[number]
 
 /** Einstellungen, die nur zu diesem Gerät gehören */

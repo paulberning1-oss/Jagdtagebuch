@@ -8,6 +8,7 @@ import { typeInfo } from '../domain/facilityTypes'
 import { SpeechTextarea } from '../components/SpeechTextarea'
 import { ACTIVITY_LEVELS, DISTURBANCES, HUNT_TYPES, type Hunt, type Kill, type Sighting } from '../domain/hunt'
 import { suggestPhases } from '../domain/phases'
+import { useCalendar, useSpeciesNames } from '../knowledge/hooks'
 import { ConditionsEditor } from './ConditionsEditor'
 import { distance, fromPos } from '../lib/geo'
 import { newId } from '../lib/id'
@@ -41,6 +42,9 @@ export function HuntForm({ id }: { id: string }) {
     () => facilities.filter((f) => typeInfo(f.type).isStand).sort((a, b) => a.name.localeCompare(b.name, 'de')),
     [facilities],
   )
+  // Jagdkalender (aus „Jagdwissen“) – Hooks vor den frühen Rücksprüngen
+  const calendar = useCalendar()
+  const speciesNames = useSpeciesNames()
 
   if (stored === undefined && !h) return <p className="p-4 text-ink-dim">Lade…</p>
   if (!h) return <p className="p-4 text-ink-dim">Eintrag nicht gefunden.</p>
@@ -78,7 +82,7 @@ export function HuntForm({ id }: { id: string }) {
   const routes = facilities.filter((f) => f.type === 'anmarsch' && f.standId === h.standId)
   // Jagdliche Phasen: Vorschläge zum Datum (Zielwildarten zuerst) + bereits gewählte eigene
   const phases = h.phases ?? []
-  const suggested = suggestPhases(h.start, h.targetSpecies)
+  const suggested = suggestPhases(h.start, h.targetSpecies, calendar, speciesNames)
   const ownPhases = phases.filter((p) => !suggested.includes(p))
   const togglePhase = (p: string) => update({ phases: phases.includes(p) ? phases.filter((x) => x !== p) : [...phases, p] })
 
@@ -156,7 +160,12 @@ export function HuntForm({ id }: { id: string }) {
         </Section>
 
         <Section title="Jagdliche Phase / Besonderheit">
-          {suggested.length > 0 && <p className="mb-2 text-sm text-ink-dim">Vorschläge zum Datum – antippen zum Übernehmen:</p>}
+          <p className="mb-2 text-sm text-ink-dim">
+            {suggested.length > 0 ? 'Vorschläge aus deinem Jagdkalender – antippen zum Übernehmen. ' : 'Dein Jagdkalender hat für dieses Datum keine Phase. '}
+            <button type="button" className="text-accent underline" onClick={() => navigate('wissen', 'kalender', h.targetSpecies[0] ?? 'alle')}>
+              Kalender bearbeiten
+            </button>
+          </p>
           <div className="mb-2 flex flex-wrap gap-2">
             {[...suggested, ...ownPhases].map((p) => (
               <Chip key={p} active={phases.includes(p)} onClick={() => togglePhase(p)}>

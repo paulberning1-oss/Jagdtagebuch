@@ -39,10 +39,14 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   **Wildaktivität 5 Stufen** („sehr ruhig“ … „sehr rege“); Erfolg ja/nein mit Details; **Fazit** und **Fehler/nächstes Mal anders**
   per **Spracheingabe** (Web Speech API, `de-DE`, wo unterstützt; sonst Hinweis auf iPhone-Diktierfunktion; Tippen geht immer).
   Sterne-Bewertung bleibt als Gesamteindruck. DB-Migration nur ergänzend.
-- [ ] 5 Jagdwissen-Seite: je Wildart Jahreskalender + Verhaltenswissen (Brunft/Blattzeit/Rauschzeit, Setz-/Frischzeit,
+- [x] 5 Jagdwissen-Seite: je Wildart Jahreskalender + Verhaltenswissen (Brunft/Blattzeit/Rauschzeit, Setz-/Frischzeit,
   Abwurf, Schieben, Fegen, Haarwechsel, Äsung je Jahreszeit, Reaktion auf Wetter/Mond/Luftdruck/Störungen, Feldfrüchte/Ernte).
   Jeder Abschnitt Status „Vorschlag – ungeprüft“, bearbeitbar, eigene Ergänzungen (auch Wissen des Opas), auf „geprüft“ setzbar.
   Daraus Jagdkalender → schlägt jagdliche Phase in Tagebuch und Assistent vor. **Jagd-/Schonzeiten: eigene Tabelle, nur der Nutzer pflegt sie, nie KI-erzeugt.**
+  Umgesetzt: Seite `src/pages/KnowledgePage.tsx` (Route `#/wissen[/wissen|kalender|jagdzeiten[/<wildart>|allg|alle]]`,
+  Einstieg oben unter „Mehr“, Links aus Tagebuch-Formular und Assistent), Logik `src/domain/knowledge.ts`,
+  Startwissen `src/domain/knowledgeDefaults.ts`, Start-Kalender `DEFAULT_PHASES` in `src/domain/phases.ts`,
+  Hooks `src/knowledge/hooks.ts`, `YearBar`, `MonthDayInput`.
 - [ ] 6 KI-Grundlage: Supabase Edge Function ruft Claude (offizielles Anthropic-SDK) auf; API-Schlüssel NUR als Supabase-Secret,
   nie im Frontend/Repo; nur eingeloggte Nutzer; Tageslimit (einstellbar, Start 30/Tag); Modellname als Konfiguration;
   einmalige, deutliche Datenschutz-Zustimmung in der App (Revier-/Tagebuchdaten gehen an die Anthropic API);
@@ -154,6 +158,16 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
 - Mehrfachauswahl in allen Listen über `src/components/Selection.tsx` (`useSelection`, `SelectButton`, `SelectToolbar` mit
   „Alles auswählen“/„Alle Beispiel-Einträge“, `SelectCheck`, `SelectActions`, `confirmTrash`): Revier-Übersicht, Tagebuch,
   Sichtungsliste, Zuletzt gelöscht (dort „Zurück“/„Endgültig“). Hook vor jedem frühen `return` aufrufen (Hook-Reihenfolge!).
+- Jagdwissen (Teilschritt 5): Vorschläge (Wissen `w:<wildart|allg>:<thema>`, Kalender `p:<wildart|allg>:<name>`) stehen
+  **im Code** und sind „Vorschlag – ungeprüft“. In DB v7 (`knowledge`, `calendar`, `seasons`, alle synchronisiert) stehen nur
+  Änderungen und eigene Einträge; `mergeWithDefaults` legt sie über die Vorschläge (gleiche Kennung ersetzt). So kommen verbesserte
+  Vorschläge bei App-Updates an, solange der Nutzer den Abschnitt nicht geändert hat. Geändert = Vorschlags-Kennung + `updatedAt`.
+  „Auf Vorschlag zurücksetzen“ und Löschen gehen über den Papierkorb (`trashKnowledge/CalendarPhase/Season`).
+  Abschnitt: `text` (Vorschlag, änderbar) + `addition` (eigene Ergänzung, z. B. Opa) + `source`; eigene Abschnitte `own`.
+  Kalender-Phasen: `active: false` = wird nicht vorgeschlagen. `suggestPhases(time, species, calendar, names)`.
+  **Jagdzeiten (`seasons`) haben keine Vorgaben im Code** – Zeile = Zeitraum, in dem bejagt werden darf; außerhalb „Schonzeit laut
+  deiner Tabelle“. Anzeige immer mit Hinweis „nur aus deiner Tabelle – maßgeblich ist das Landesjagdrecht“.
+  Die KI (Schritt 7/8) bekommt nur geprüftes Wissen (ungeprüftes nur auf Wunsch, gekennzeichnet) und Jagdzeiten nur aus `seasons`.
 - **Rückfragen nie mit `window.confirm()`**, sondern `await ask('…', { ok, cancel, danger })` aus `src/components/ConfirmDialog.tsx`
   (`ConfirmHost` in `App.tsx`). Grund: manche Umgebungen (Vorschau-Fenster der Claude-App, In-App-Browser) beantworten
   `confirm()` sofort mit „Nein“ → Löschen tat nichts. Lösch-/Verwerfen-Fragen bekommen automatisch einen roten „Löschen“-Knopf.

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 
 // Einfaches Routing über den #-Teil der Adresse – funktioniert auch auf GitHub Pages.
-// Beispiele: #/karte, #/tagebuch, #/tagebuch/<id>, #/tagebuch/<id>/bearbeiten
-export type Route = 'karte' | 'sichtungen' | 'tagebuch' | 'assistent' | 'mehr'
-const ROUTES: Route[] = ['karte', 'sichtungen', 'tagebuch', 'assistent', 'mehr']
+// Beispiele: #/karte, #/tagebuch, #/tagebuch/<id>, #/tagebuch/<id>/bearbeiten, #/wissen/kalender/rehwild
+export type Route = 'karte' | 'sichtungen' | 'tagebuch' | 'assistent' | 'mehr' | 'wissen'
+const ROUTES: Route[] = ['karte', 'sichtungen', 'tagebuch', 'assistent', 'mehr', 'wissen']
 
 export interface Location {
   route: Route

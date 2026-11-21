@@ -1,19 +1,31 @@
 // „Zuletzt gelöscht“: Gelöschte Einträge aller Listen landen hier und lassen sich wiederherstellen –
-// Objekte, Reviergrenzen, Ansitze, Sichtungen, Wildarten, Kategorien und Revier-Fotos.
+// Objekte, Reviergrenzen, Ansitze, Sichtungen, Wildarten, Kategorien, Revier-Fotos und Jagdwissen
+// (eigene/geänderte Abschnitte, Kalender-Phasen, Jagdzeiten).
 // Nach 30 Tagen (oder beim Leeren) werden sie endgültig entfernt – erst dann auch ihre Fotos.
 // Die Tabelle wird wie alle Kontodaten synchronisiert (Testdaten bleiben lokal).
 import { newId } from '../lib/id'
 import { fmtDate, fmtTime } from '../lib/time'
 import { typeInfo, type Category } from '../domain/facilityTypes'
 import type { Hunt, Sighting } from '../domain/hunt'
+import type { CalendarPhase, KnowledgeEntry, Season } from '../domain/knowledge'
 import type { Species } from '../domain/species'
 import { db, type Boundary, type Facility, type MapOverlay } from './db'
 
 export const TRASH_DAYS = 30
 const DAY = 86400000
 
-export type TrashTable = 'facilities' | 'boundaries' | 'hunts' | 'sightings' | 'species' | 'categories' | 'overlays'
-type TrashItem = Facility | Boundary | Hunt | Sighting | Species | Category | MapOverlay
+export type TrashTable =
+  | 'facilities'
+  | 'boundaries'
+  | 'hunts'
+  | 'sightings'
+  | 'species'
+  | 'categories'
+  | 'overlays'
+  | 'knowledge'
+  | 'calendar'
+  | 'seasons'
+type TrashItem = Facility | Boundary | Hunt | Sighting | Species | Category | MapOverlay | KnowledgeEntry | CalendarPhase | Season
 
 export interface TrashEntry {
   id: string
@@ -33,7 +45,7 @@ export interface TrashEntry {
   demo?: boolean
 }
 
-const ALL_TABLES = () => [db.facilities, db.boundaries, db.hunts, db.sightings, db.species, db.categories, db.overlays, db.photos, db.trash]
+const ALL_TABLES = () => [db.facilities, db.boundaries, db.hunts, db.sightings, db.species, db.categories, db.overlays, db.knowledge, db.calendar, db.seasons, db.photos, db.trash]
 const table = (t: TrashTable) => db.table(t)
 
 type NewEntry = Omit<TrashEntry, 'id' | 'batch' | 'deletedAt'>
@@ -201,3 +213,25 @@ export async function purgeOldTrash(now = Date.now()): Promise<number> {
 
 /** Tage bis zum endgültigen Löschen */
 export const daysLeft = (e: TrashEntry, now = Date.now()) => Math.max(0, Math.ceil((e.deletedAt + TRASH_DAYS * DAY - now) / DAY))
+
+// ---------- Jagdwissen ----------
+
+/**
+ * Wissensabschnitt löschen bzw. – bei einem geänderten Vorschlag – auf den Vorschlag zurücksetzen.
+ * Beides landet in „Zuletzt gelöscht“; Wiederherstellen bringt die eigene Fassung zurück.
+ */
+export async function trashKnowledge(k: KnowledgeEntry, now = Date.now()) {
+  const kind = k.own ? 'Jagdwissen' : 'Jagdwissen (deine Änderung)'
+  return db.transaction('rw', ALL_TABLES(), () => moveToTrash([{ tbl: 'knowledge', item: k, label: k.title, kind }], now))
+}
+
+export async function trashCalendarPhase(p: CalendarPhase, now = Date.now()) {
+  const kind = p.own ? 'Kalender-Phase' : 'Kalender-Phase (deine Änderung)'
+  return db.transaction('rw', ALL_TABLES(), () => moveToTrash([{ tbl: 'calendar', item: p, label: p.label, kind }], now))
+}
+
+export async function trashSeason(s: Season, speciesName: string, now = Date.now()) {
+  return db.transaction('rw', ALL_TABLES(), () =>
+    moveToTrash([{ tbl: 'seasons', item: s, label: `${speciesName}: ${s.label || 'Jagdzeit'}`, kind: 'Jagdzeit' }], now),
+  )
+}

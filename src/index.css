@@ -57,6 +57,10 @@ body {
   .card {
     @apply rounded-2xl bg-panel border border-line p-4;
   }
+  /* Kleine Status-Plakette, z. B. „Vorschlag – ungeprüft“ / „geprüft“ */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold whitespace-nowrap;
+  }
 }
 
 /* Leaflet an das dunkle Design anpassen */

@@ -10,6 +10,7 @@ import { registerCustomCategories } from './domain/facilityTypes'
 import { navigate, useLocation, type Route } from './lib/router'
 import AssistantPage from './pages/AssistantPage'
 import JournalPage from './pages/JournalPage'
+import KnowledgePage from './pages/KnowledgePage'
 import { startWeatherSync } from './services/weatherSync'
 import MapPage from './pages/MapPage'
 import SettingsPage from './pages/SettingsPage'
@@ -42,6 +43,7 @@ export default function App() {
           {route === 'tagebuch' && <JournalPage parts={parts} />}
           {route === 'assistent' && <AssistantPage />}
           {route === 'mehr' && <SettingsPage />}
+          {route === 'wissen' && <KnowledgePage key={parts.join('/')} parts={parts} />}
         </main>
         <nav className="pb-safe grid grid-cols-5 border-t border-line bg-panel">
           {NAV.map((n) => (
@@ -49,7 +51,7 @@ export default function App() {
               key={n.route}
               onClick={() => navigate(n.route)}
               className={`flex min-h-16 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${
-                route === n.route ? 'text-accent' : 'text-ink-dim'
+                route === n.route || (route === 'wissen' && n.route === 'mehr') ? 'text-accent' : 'text-ink-dim'
               }`}
             >
               {n.icon}

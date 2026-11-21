@@ -4,6 +4,7 @@ import Dexie, { type EntityTable } from 'dexie'
 import type { LineString, MultiPolygon, Point, Polygon } from 'geojson'
 import type { Category, FacilityType } from '../domain/facilityTypes'
 import type { Hunt, Sighting } from '../domain/hunt'
+import type { CalendarPhase, KnowledgeEntry, Season } from '../domain/knowledge'
 import { DEFAULT_SPECIES, type Species } from '../domain/species'
 import type { TrashEntry } from './trash'
 
@@ -93,6 +94,9 @@ export class AnsitzDB extends Dexie {
   syncMeta!: EntityTable<SyncMeta, 'key'>
   categories!: EntityTable<Category, 'id'>
   trash!: EntityTable<TrashEntry, 'id'>
+  knowledge!: EntityTable<KnowledgeEntry, 'id'>
+  calendar!: EntityTable<CalendarPhase, 'id'>
+  seasons!: EntityTable<Season, 'id'>
 
   constructor() {
     super('ansitzplaner')
@@ -138,6 +142,12 @@ export class AnsitzDB extends Dexie {
     // „Zuletzt gelöscht“ (Papierkorb)
     this.version(6).stores({
       trash: 'id, deletedAt, batch',
+    })
+    // Jagdwissen: geänderte/eigene Wissensabschnitte, Jagdkalender, eigene Jagdzeiten
+    this.version(7).stores({
+      knowledge: 'id, speciesId',
+      calendar: 'id, speciesId',
+      seasons: 'id, speciesId',
     })
     // Ganz neue Datenbank: Startliste der Wildarten anlegen
     this.on('populate', (tx) => {

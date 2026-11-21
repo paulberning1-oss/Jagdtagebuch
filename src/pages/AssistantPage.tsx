@@ -1,6 +1,6 @@
 // Kombinations-Assistent: Welcher Sitz passt heute am besten?
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BookOpen, ChevronDown, ChevronUp, CloudOff, Compass, Loader2, Minus, Play, Plus, RotateCcw } from 'lucide-react'
+import { BookOpen, CalendarDays, ChevronDown, ChevronUp, CloudOff, Compass, Loader2, Minus, Play, Plus, RotateCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { usePlanConditions } from '../assistant/usePlanConditions'
 import { Chip, useToast } from '../components/ui'
@@ -10,9 +10,12 @@ import { bestWindFor, huntStats, OWN_DATA_HALF, rateStands, type StandRating, ty
 import { weatherCodeText } from '../domain/environment'
 import { typeInfo } from '../domain/facilityTypes'
 import type { HuntEnv } from '../domain/hunt'
+import { fmtMonthDay, seasonsAt } from '../domain/knowledge'
+import { inPhase, phaseLabel } from '../domain/phases'
 import { RULES, STRENGTHS, type RuleSettings } from '../domain/rules'
 import { startHunt } from '../journal/huntActions'
 import { useSpecies } from '../journal/hooks'
+import { useCalendar, useSeasons, useSpeciesNames } from '../knowledge/hooks'
 import { COMPASS_8, compass16, fromPos, type LatLng } from '../lib/geo'
 import { navigate } from '../lib/router'
 import { eveningStart, morningStart } from '../lib/sun'
@@ -181,6 +184,7 @@ function Recommendation() {
         </p>
         <SpeciesPicker />
         {env && <ConditionsView env={env} weather={weather} manualWind={manualWind} setManualWind={setManualWind} />}
+        <CalendarBox time={start} speciesId={speciesId} speciesName={speciesName} />
       </section>
 
       {!ratings && <p className="text-ink-dim">Berechne…</p>}
@@ -487,3 +491,58 @@ function RuleEditor() {
 const roundTo5 = (t: number) => Math.round(t / 300000) * 300000
 const round3 = (x: number) => Math.round(x * 1000) / 1000
 const fmt1 = (x: number) => x.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+
+// ---------- Jagdkalender & eigene Jagdzeiten zum geplanten Zeitpunkt ----------
+
+function CalendarBox({ time, speciesId, speciesName }: { time: number; speciesId: string | null; speciesName: string }) {
+  const calendar = useCalendar()
+  const seasons = useSeasons()
+  const names = useSpeciesNames()
+  if (!calendar || !seasons) return null
+  const phases = calendar.filter(
+    (p) => p.active !== false && inPhase(p, time) && (speciesId == null || p.speciesId == null || p.speciesId === speciesId),
+  )
+  const states = speciesId ? seasonsAt(seasons, speciesId, time) : []
+
+  return (
+    <div className="mt-3 rounded-xl border border-line p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <CalendarDays className="shrink-0 text-accent" />
+        <h3 className="flex-1 font-bold">Jagdkalender</h3>
+        <button className="text-sm text-accent underline" onClick={() => navigate('wissen', 'wissen', speciesId ?? 'allg')}>
+          Jagdwissen
+        </button>
+      </div>
+      {phases.length ? (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {phases.map((p) => (
+            <span key={p.id} className={`badge ${p.status === 'geprueft' || p.own ? 'border-good/60 text-good' : 'border-hint/60 text-hint'}`}>
+              {phaseLabel(p, names)}
+              {p.status !== 'geprueft' && !p.own && ' · ungeprüft'}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mb-2 text-sm text-ink-dim">Keine Phase im Kalender für dieses Datum.</p>
+      )}
+      {speciesId &&
+        (states.length ? (
+          <div className="grid gap-1 text-sm">
+            {states.map(({ season, open }) => (
+              <p key={season.id} className={open ? 'text-good' : 'text-warn'}>
+                {season.label || speciesName}: {open ? 'Jagdzeit' : 'Schonzeit'} laut deiner Tabelle ({fmtMonthDay(season.from)}–{fmtMonthDay(season.to)})
+              </p>
+            ))}
+            <p className="text-xs text-ink-dim">Nur aus deiner eigenen Tabelle – maßgeblich ist das Jagdrecht deines Bundeslandes.</p>
+          </div>
+        ) : (
+          <p className="text-sm text-ink-dim">
+            Jagdzeit für {speciesName}: nicht eingetragen.{' '}
+            <button className="text-accent underline" onClick={() => navigate('wissen', 'jagdzeiten')}>
+              Eintragen
+            </button>
+          </p>
+        ))}
+    </div>
+  )
+}
