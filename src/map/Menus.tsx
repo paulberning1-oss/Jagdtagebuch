@@ -1,3 +1,4 @@
+import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Check, Eye, EyeOff, FileUp, Image, ListChecks, Maximize, Move, PenLine, Plus, Square, SquareCheck, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
@@ -66,7 +67,7 @@ export function LayerMenu({
                     className="btn btn-danger !px-3"
                     aria-label="Revierkarte löschen"
                     onClick={async () => {
-                      if (!confirm(`„${o.name}“ löschen? (Eine daraus gezeichnete Reviergrenze bleibt erhalten.)\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
+                      if (!await ask(`„${o.name}“ löschen? (Eine daraus gezeichnete Reviergrenze bleibt erhalten.)\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
                       await trashOverlay(o)
                     }}
                   >
@@ -112,7 +113,7 @@ export function AddMenu({
     try {
       const parts = await readBoundaryFile(file)
       const existing = await db.boundaries.filter((b) => !b.demo).count()
-      if (existing && confirm('Es gibt schon eine eigene Reviergrenze. Ersetzen? (Abbrechen = zusätzlich hinzufügen)')) {
+      if (existing && await ask('Es gibt schon eine eigene Reviergrenze. Ersetzen oder die neue zusätzlich hinzufügen?', { ok: 'Ersetzen', cancel: 'Zusätzlich hinzufügen', danger: true })) {
         await db.boundaries.filter((b) => !b.demo).delete()
       }
       const rows: Boundary[] = parts.map((p) => ({ id: newId(), name: p.name, geometry: p.geometry, createdAt: Date.now() }))
@@ -236,7 +237,7 @@ export function FacilityList({
   const removeSelected = async () => {
     const keys = [...sel].filter((k) => allKeys.includes(k))
     if (!keys.length) return
-    if (!confirm(`${keys.length} Einträge löschen?\n\nDu kannst sie 30 Tage lang unter „Mehr → Zuletzt gelöscht“ wiederherstellen.`)) return
+    if (!await ask(`${keys.length} Einträge löschen?\n\nDu kannst sie 30 Tage lang unter „Mehr → Zuletzt gelöscht“ wiederherstellen.`)) return
     const n =
       (await trashFacilities(keys.filter((k) => k.startsWith('f:')).map((k) => k.slice(2)))) +
       (await trashBoundaries(keys.filter((k) => k.startsWith('b:')).map((k) => k.slice(2))))
@@ -358,7 +359,7 @@ export function BoundarySheet({ id, onClose, onRedraw }: { id: string; onClose: 
             className="btn btn-danger"
             aria-label="Löschen"
             onClick={async () => {
-              if (!confirm('Diese Reviergrenze löschen? (30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“)')) return
+              if (!await ask('Diese Reviergrenze löschen? (30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“)')) return
               await trashBoundaries([b.id])
               toast('Reviergrenze gelöscht – wiederherstellbar unter „Mehr → Zuletzt gelöscht“')
               onClose()

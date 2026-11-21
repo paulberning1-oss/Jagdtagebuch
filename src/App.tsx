@@ -2,6 +2,7 @@ import { BookOpen, Compass, Map as MapIcon, Menu, Telescope } from 'lucide-react
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { AuthGate } from './cloud/auth'
+import { ConfirmHost } from './components/ConfirmDialog'
 import { ToastProvider } from './components/ui'
 import { db } from './db/db'
 import { purgeOldTrash } from './db/trash'
@@ -58,6 +59,7 @@ export default function App() {
         </nav>
       </div>
       </AuthGate>
+      <ConfirmHost />
     </ToastProvider>
   )
 }

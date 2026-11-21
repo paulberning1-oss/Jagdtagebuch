@@ -1,4 +1,5 @@
 // Eigene Kategorie anlegen oder bearbeiten (z. B. „Hochwasserrinne“, „Holzpolter“).
+import { ask } from '../components/ConfirmDialog'
 import { Check, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Chip, useToast } from '../components/ui'
@@ -58,7 +59,7 @@ export function CategoryForm({
     if (!initial) return
     const used = await db.facilities.where('type').equals(initial.id).count()
     if (used) return toast(`Wird noch von ${used} Objekt(en) genutzt – erst diese löschen oder umstellen.`, 'error')
-    if (!confirm(`Kategorie „${initial.label}“ löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
+    if (!await ask(`Kategorie „${initial.label}“ löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
     await trashCategory(initial)
     onCancel()
   }

@@ -1,3 +1,4 @@
+import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Camera, Footprints, Move, PenLine, Play, Plus, Trash2, Wind } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -63,7 +64,7 @@ export function FacilityEditor({
   // Löschen = in „Zuletzt gelöscht“ verschieben (Fotos bleiben bis zum endgültigen Löschen)
   const remove = async () => {
     const extra = info.isStand && routes.length ? `\n\nSeine ${routes.length} Anmarschweg(e) werden mitgelöscht.` : ''
-    if (!confirm(`„${draft.name || info.label}“ löschen?${extra}\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
+    if (!await ask(`„${draft.name || info.label}“ löschen?${extra}\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
     await trashFacilities([draft.id])
     toast('Gelöscht – wiederherstellbar unter „Mehr → Zuletzt gelöscht“')
     onClose()
@@ -80,7 +81,7 @@ export function FacilityEditor({
   }
 
   const removePhoto = async (pid: string) => {
-    if (!confirm('Foto löschen?')) return
+    if (!await ask('Foto löschen?')) return
     update({ photoIds: draft.photoIds.filter((p) => p !== pid) })
     await db.photos.delete(pid)
   }

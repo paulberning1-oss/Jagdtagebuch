@@ -65,7 +65,7 @@ export default function SightingsPage() {
   const listSel = useSelection()
   const removeSelected = async () => {
     const ids = [...listSel.sel]
-    if (!ids.length || !confirmTrash(ids.length)) return
+    if (!ids.length || !await confirmTrash(ids.length)) return
     const n = await trashSightings(ids)
     toast(`${n} Sichtung(en) gelöscht – ${TRASH_HINT}`, 'success')
     listSel.stop()

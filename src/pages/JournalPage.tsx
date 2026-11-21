@@ -1,3 +1,4 @@
+import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarPlus, ChevronRight, CloudOff, Moon, Play, Square, Telescope, Target } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -37,7 +38,7 @@ function JournalHome() {
 
   const removeSelected = async () => {
     const ids = [...sel.sel].filter((id) => hunts?.some((h) => h.id === id))
-    if (!ids.length || !confirmTrash(ids.length, 'Die Sichtungen dieser Ansitze werden mitgelöscht.')) return
+    if (!ids.length || !await confirmTrash(ids.length, 'Die Sichtungen dieser Ansitze werden mitgelöscht.')) return
     const n = await trashHunts(ids)
     toast(`${ids.length} Ansitz(e) gelöscht (mit Sichtungen ${n} Einträge) – ${TRASH_HINT}`, 'success')
     sel.stop()
@@ -130,7 +131,7 @@ function RunningCard({ hunt, count }: { hunt: Hunt; count: number }) {
         <button
           className="mt-1 text-sm text-ink-dim underline"
           onClick={async () => {
-            if (!confirm('Laufenden Ansitz verwerfen? (Landet in „Mehr → Zuletzt gelöscht“)')) return
+            if (!await ask('Laufenden Ansitz verwerfen? (Landet in „Mehr → Zuletzt gelöscht“)')) return
             await deleteHunt(hunt.id)
             toast('Ansitz verworfen')
           }}

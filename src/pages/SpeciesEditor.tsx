@@ -1,4 +1,5 @@
 // Wildarten-Liste bearbeiten: umbenennen, Geschlecht/Altersklassen, Farbe, Reihenfolge, neu, löschen.
+import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -37,7 +38,7 @@ export function SpeciesEditor() {
       toast(`„${s.name}“ wird noch in ${nS} Sichtung(en) und ${nH} Ansitz(en) verwendet – nicht gelöscht.`, 'error')
       return
     }
-    if (!confirm(`„${s.name}“ löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
+    if (!await ask(`„${s.name}“ löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.`)) return
     await trashSpecies(s)
   }
 

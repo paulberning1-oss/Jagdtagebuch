@@ -1,4 +1,5 @@
 // „Mehr → Zuletzt gelöscht“: gelöschte Einträge aller Listen wiederherstellen oder endgültig löschen.
+import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArchiveRestore, Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -26,7 +27,7 @@ export function TrashSection() {
   const purge = async (ids: string[], all = false) => {
     if (!ids.length) return
     const text = all ? `Alle ${ids.length} Einträge` : `${ids.length} ${ids.length === 1 ? 'Eintrag' : 'Einträge'}`
-    if (!confirm(`${text} endgültig löschen? Das kann nicht rückgängig gemacht werden.`)) return
+    if (!await ask(`${text} endgültig löschen? Das kann nicht rückgängig gemacht werden.`)) return
     await purgeTrash(ids)
     toast(all ? 'Zuletzt gelöscht ist leer' : 'Endgültig gelöscht')
     sel.stop()

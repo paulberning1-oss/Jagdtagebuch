@@ -1,5 +1,6 @@
 // Wildkamera-Import: mehrere Bilder, Aufnahmezeit aus EXIF, Kamera zuordnen,
 // Wildart taggen. Wetter/Mond werden automatisch ergänzt.
+import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AlertTriangle, Camera, ImagePlus, Loader2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -85,7 +86,7 @@ export function CameraImport({ onClose }: { onClose: () => void }) {
   const save = async () => {
     if (!camera || camera.geometry.type !== 'Point') return toast('Bitte eine Wildkamera wählen', 'error')
     if (!groups.length) return
-    if (untagged && !confirm(`${untagged} Bild(er) ohne Wildart werden nicht übernommen. Fortfahren?`)) return
+    if (untagged && !await ask(`${untagged} Bild(er) ohne Wildart werden nicht übernommen. Fortfahren?`)) return
     setSaving(true)
     try {
       const pos = fromPos(camera.geometry.coordinates)

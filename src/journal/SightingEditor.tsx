@@ -1,4 +1,5 @@
 // Eine Sichtung (Anblick) erfassen oder bearbeiten – Vollbild, große Bedienelemente.
+import { ask } from '../components/ConfirmDialog'
 import { MapPin, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Chip, ChipGroup, Section, Stepper } from '../components/ui'
@@ -36,7 +37,7 @@ export function SightingEditor({
     onClose(true)
   }
   const remove = async () => {
-    if (!confirm('Diese Sichtung löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.')) return
+    if (!await ask('Diese Sichtung löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.')) return
     await deleteSighting(s.id)
     onClose(false)
   }

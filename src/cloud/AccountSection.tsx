@@ -1,4 +1,5 @@
 // Abschnitt „Konto“ unter „Mehr“: wer ist angemeldet, ist alles gesichert?
+import { ask } from '../components/ConfirmDialog'
 import { CloudCheck, CloudOff, LogOut, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useToast } from '../components/ui'
@@ -24,9 +25,10 @@ export function AccountSection() {
       const pending = await countPending()
       if (
         pending > 0 &&
-        !confirm(
+        !await ask(
           `${pending} Änderung(en) sind noch nicht in deinem Konto gesichert (kein Internet?).\n` +
             'Wenn du dich jetzt abmeldest und sich ein anderes Konto anmeldet, gehen sie verloren.\n\nTrotzdem abmelden?',
+          { ok: 'Trotzdem abmelden', danger: true },
         )
       )
         return

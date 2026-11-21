@@ -2,6 +2,7 @@
 // Gelöschtes landet immer in „Mehr → Zuletzt gelöscht“.
 import { ListChecks, Square, SquareCheck, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { ask } from './ConfirmDialog'
 
 export interface Selection {
   selecting: boolean
@@ -75,6 +76,6 @@ export function SelectActions({ s, onDelete }: { s: Selection; onDelete: () => v
 
 /** Sicherheitsfrage vor dem Löschen */
 export const confirmTrash = (n: number, extra = '') =>
-  confirm(`${n} ${n === 1 ? 'Eintrag' : 'Einträge'} löschen?${extra ? `\n\n${extra}` : ''}\n\nDu kannst sie 30 Tage lang unter „Mehr → Zuletzt gelöscht“ wiederherstellen.`)
+  ask(`${n} ${n === 1 ? 'Eintrag' : 'Einträge'} löschen?${extra ? `\n\n${extra}` : ''}\n\nDu kannst sie 30 Tage lang unter „Mehr → Zuletzt gelöscht“ wiederherstellen.`)
 
 export const TRASH_HINT = 'wiederherstellen unter „Mehr → Zuletzt gelöscht“'

@@ -154,6 +154,9 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
 - Mehrfachauswahl in allen Listen über `src/components/Selection.tsx` (`useSelection`, `SelectButton`, `SelectToolbar` mit
   „Alles auswählen“/„Alle Beispiel-Einträge“, `SelectCheck`, `SelectActions`, `confirmTrash`): Revier-Übersicht, Tagebuch,
   Sichtungsliste, Zuletzt gelöscht (dort „Zurück“/„Endgültig“). Hook vor jedem frühen `return` aufrufen (Hook-Reihenfolge!).
+- **Rückfragen nie mit `window.confirm()`**, sondern `await ask('…', { ok, cancel, danger })` aus `src/components/ConfirmDialog.tsx`
+  (`ConfirmHost` in `App.tsx`). Grund: manche Umgebungen (Vorschau-Fenster der Claude-App, In-App-Browser) beantworten
+  `confirm()` sofort mit „Nein“ → Löschen tat nichts. Lösch-/Verwerfen-Fragen bekommen automatisch einen roten „Löschen“-Knopf.
 - Wind-Knopf = **Wind im ganzen Revier** (`src/map/RevierWindPanel.tsx`, Logik `src/domain/revierWind.ts`, Ebene `RevierWindLayer`):
   Karte zeigt das ganze Revier (Ausschnitt mit Rand für das Kürzel), rotes Kürzel (8 Richtungen) auf der Seite, aus der der
   Wind kommt, weiße Pfeile (Raster innerhalb der eigenen Grenze) in Windrichtung. Darunter alle Sitze geprüft (✓/⚠ mit Grund,

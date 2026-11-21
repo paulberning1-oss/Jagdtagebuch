@@ -1,3 +1,4 @@
+import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import { AccountSection } from '../cloud/AccountSection'
@@ -107,7 +108,7 @@ export default function SettingsPage() {
             className="btn btn-danger"
             disabled={!demoCount}
             onClick={async () => {
-              if (!confirm('Alle Testdaten löschen? Deine eigenen Einträge bleiben erhalten.')) return
+              if (!await ask('Alle Testdaten löschen? Deine eigenen Einträge bleiben erhalten.')) return
               await clearDemoData()
               // Karte wieder auf das eigene Revier stellen (falls vorhanden)
               const r = await revierBounds()

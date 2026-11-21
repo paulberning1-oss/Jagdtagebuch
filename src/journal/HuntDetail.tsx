@@ -1,4 +1,5 @@
 // Detailansicht eines Ansitzes mit allen automatisch ermittelten Bedingungen.
+import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, CloudSun, Loader2, Moon, Navigation, Pencil, RefreshCw, Sunset, Trash2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
@@ -69,7 +70,7 @@ export function HuntDetail({ id }: { id: string }) {
   }
 
   const remove = async () => {
-    if (!confirm('Diesen Ansitz mit allen Sichtungen löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.')) return
+    if (!await ask('Diesen Ansitz mit allen Sichtungen löschen?\n\n30 Tage lang wiederherstellbar unter „Mehr → Zuletzt gelöscht“.')) return
     await deleteHunt(h.id)
     toast('Ansitz gelöscht – wiederherstellbar unter „Mehr → Zuletzt gelöscht“')
     navigate('tagebuch')
