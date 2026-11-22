@@ -2,6 +2,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight, MapPin, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { ClassPicker } from '../components/ClassPicker'
 import { Chip, ChipGroup, DecimalInput, Section, Stars, useToast } from '../components/ui'
 import { db } from '../db/db'
 import { typeInfo } from '../domain/facilityTypes'
@@ -282,16 +283,16 @@ export function HuntForm({ id }: { id: string }) {
                         ))}
                       </select>
                     </label>
-                    {sp && sp.sexAge.length > 0 && (
-                      <div className="mb-3">
-                        <span className="label">Geschlecht / Alter</span>
-                        <ChipGroup
-                          options={sp.sexAge.map((x) => ({ id: x, label: x }))}
-                          value={k.sexAge ? [k.sexAge] : []}
-                          onChange={(v) => setKill(k.id, { sexAge: v[0] ?? '' })}
-                        />
-                      </div>
-                    )}
+                    <div className="mb-3">
+                      <span className="label">Geschlecht und Alter</span>
+                      <ClassPicker
+                        key={k.speciesId}
+                        species={sp}
+                        multi={false}
+                        value={k.sexAge ? [k.sexAge] : []}
+                        onChange={(v) => setKill(k.id, { sexAge: v[0] ?? '' })}
+                      />
+                    </div>
                     <label className="mb-3 block">
                       <span className="label">Uhrzeit</span>
                       <input

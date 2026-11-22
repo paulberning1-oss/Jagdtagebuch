@@ -6,6 +6,7 @@ import type { Facility } from '../db/db'
 import { typeInfo } from '../domain/facilityTypes'
 import { DISTURBANCES, type Hunt, type HuntOverrides, type Kill, type Sighting } from '../domain/hunt'
 import { BEHAVIORS, type Species } from '../domain/species'
+import { allClasses } from '../domain/speciesClasses'
 import { fromPos, type LatLng } from '../lib/geo'
 import { newId } from '../lib/id'
 import { fromBerlinLocal, toBerlinDate } from '../lib/time'
@@ -218,7 +219,7 @@ export function importPrompt(ctx: ImportContext): string {
     ...ctx.stands.map((s) => `- ${s.id} – ${s.name || typeInfo(s.type).label} (${typeInfo(s.type).label})`),
     '',
     'Wildarten (Kennung – Name: Klassen):',
-    ...ctx.species.map((s) => `- ${s.id} – ${s.name}${s.sexAge.length ? `: ${s.sexAge.join(', ')}` : ''}`),
+    ...ctx.species.map((s) => `- ${s.id} – ${s.name}${allClasses(s).length ? `: ${allClasses(s).join(', ')}` : ''}`),
     '',
     `Verhalten: ${BEHAVIORS.join(', ')}`,
     `Störungen: ${DISTURBANCES.join(', ')}`,

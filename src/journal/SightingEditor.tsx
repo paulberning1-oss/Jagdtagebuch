@@ -3,7 +3,9 @@ import { ask } from '../components/ConfirmDialog'
 import { MapPin, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Chip, ChipGroup, Section, Stepper } from '../components/ui'
-import { AGE_DEFAULT, AGE_SUGGESTIONS, SIGHTING_SOURCES, type Sighting } from '../domain/hunt'
+import { ClassPicker } from '../components/ClassPicker'
+import { classTree } from '../domain/speciesClasses'
+import { SIGHTING_SOURCES, type Sighting } from '../domain/hunt'
 import { BEHAVIORS } from '../domain/species'
 import { COMPASS_8, distance, type LatLng } from '../lib/geo'
 import { fromBerlinLocal, toBerlinLocal } from '../lib/time'
@@ -76,29 +78,15 @@ export function SightingEditor({
           <Stepper value={s.count} onChange={(count) => set({ count })} />
         </Section>
 
-        {sp && sp.sexAge.length > 0 && (
-          <Section title="Geschlecht / Alter (mehrere möglich)">
-            <ChipGroup
-              multi
-              options={[...sp.sexAge, 'unbekannt'].map((x) => ({ id: x, label: x }))}
-              value={s.sexAge}
-              onChange={(sexAge) => set({ sexAge })}
-            />
-          </Section>
-        )}
+        <Section title={`${sp?.name ?? 'Wildart'}: ${classTree(sp)[0]?.label.startsWith('männlich') ? 'Geschlecht und Alter' : 'Art und Klasse'}`}>
+          <ClassPicker key={s.speciesId} species={sp} value={s.sexAge} onChange={(sexAge) => set({ sexAge })} />
+        </Section>
 
-        <Section title="Altersschätzung (optional)">
-          <div className="mb-2 flex flex-wrap gap-2">
-            {(AGE_SUGGESTIONS[s.speciesId] ?? AGE_DEFAULT).map((a) => (
-              <Chip key={a} active={s.ageEstimate === a} onClick={() => set({ ageEstimate: s.ageEstimate === a ? '' : a })}>
-                {a}
-              </Chip>
-            ))}
-          </div>
+        <Section title="Bemerkung zum Alter (optional)">
           <input
             className="input"
             value={s.ageEstimate ?? ''}
-            placeholder="oder frei, z. B. „ca. 3 Jahre, starker Träger“"
+            placeholder="z. B. „ca. 3 Jahre, starker Träger“"
             onChange={(e) => set({ ageEstimate: e.target.value })}
           />
         </Section>

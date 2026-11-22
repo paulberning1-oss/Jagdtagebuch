@@ -255,6 +255,11 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   „Frei“ (perspektivisch). „Form zurücksetzen“ = Rechteck im Bild-Seitenverhältnis. „Foto einpassen“ zoomt auf alle Ecken.
   Hinweisleiste oben ist `pointer-events-none`, damit Ecken darunter greifbar bleiben.
 - Wildart nur löschbar, wenn nirgends verwendet.
+- Klassen in Stufen (`src/domain/speciesClasses.ts`, `CLASS_TREES`, Anzeige `src/components/ClassPicker.tsx`): Wildart → Geschlecht
+  (männlich/weiblich/unbekannt; bei Gänsen/Enten „Art“) → Klasse mit Alter (z. B. Jährling / Spießer, Schmalreh). Gespeichert wird weiter nur
+  der Klassenname in `sexAge` (Sichtung: mehrere, Erlegung: einer); alte Namen (Bock, Ricke …) sind im Baum enthalten. Eigene Wildarten
+  bzw. im Editor ergänzte Klassen → Gruppe „Klasse“/„Weitere“. Lokale Vorschau ohne Konto: Launch-Eintrag `ansitzplaner-lokal`
+  (Port 5174, `--mode lokal`, `.env.lokal` mit leeren Supabase-Werten, gitignored) – eigene, leere Datenbank.
 - Speicher ist pro Browser-Kontext getrennt (Safari, privater Tab, In-App-Browser anderer Apps, Home-Bildschirm-Symbol).
   „Mehr“ zeigt die Zahl eigener Einträge auf diesem Gerät (`src/db/ownData.ts`); Übersicht hat „Mein Revier anzeigen“;
   nach „Testdaten löschen“ springt die Karte zurück zum eigenen Revier.
