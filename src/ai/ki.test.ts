@@ -26,7 +26,7 @@ describe('KI-Funktion: Anfrage prüfen', () => {
 
   it('Größen und Aufgaben begrenzt', () => {
     expect(checkRequest({ task: 'hack', consent: true, messages: [user('a')] }).ok).toBe(false)
-    expect(checkRequest({ task: 'test', consent: true, messages: [user('x'.repeat(20_001))] }).ok).toBe(false)
+    expect(checkRequest({ task: 'test', consent: true, messages: [user('x'.repeat(60_001))] }).ok).toBe(false)
     expect(checkRequest({ task: 'test', consent: true, context: 'x'.repeat(400_001), messages: [user('a')] }).ok).toBe(false)
     expect(checkRequest({ task: 'test', consent: true, messages: [user('  ')] }).ok).toBe(false)
     expect(checkRequest({ task: 'status', consent: true, messages: [] }).ok).toBe(true)

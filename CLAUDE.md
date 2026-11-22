@@ -77,6 +77,12 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   (`supabase/functions/ki/schemas.ts`, Server legt das Format fest; App liest mit `parseEmpfehlung`). Anzeige
   `src/ai/KiRecommendation.tsx` im Assistenten (Herkunft je Aussage farbig, unbekannte Sitz-/Weg-Kennungen werden gewarnt,
   „Was wird gesendet?“ auch vor der Zustimmung). Settings `kiUnverified`, `kiDemo` (Standard aus).
+- [x] (Zusatz) **Aus Foto nachtragen** (handschriftliches Tagebuch): Seite `src/journal/PhotoImportPage.tsx` (Route `#/tagebuch/foto`,
+  Knopf im Tagebuch), bis 4 Fotos (2000 px JPEG) → Aufgabe `foto` der KI-Funktion (Bilder nur bei dieser Aufgabe, `validate.ts` prüft
+  Typ/Größe/Base64), Antwort `TAGEBUCH_SCHEMA` (`parseTagebuch`). Logik `src/journal/photoImport.ts`: `toDrafts` (Sitz per Kennung/Name,
+  fehlende Zeiten → Annahme + Hinweis, Zukunft/Datum ungültig sperrt, mögliche Doppelte nicht vorausgewählt), `draftToRecords`
+  (Ansitz + Sichtungen + Erlegungen, Wind/Temperatur als `overrides`, Unzuordnbares wörtlich in `notes`, Wetter lädt aus dem Archiv).
+  Fotos werden nicht gespeichert. Nutzer prüft Datum/Zeit/Sitz vor dem Übernehmen.
 - [ ] 8 KI-Chat zu Revier und Daten + Rückmeldung nach dem Ansitz (zu Fazit und Fehlern, konkrete Tipps).
   System-Prompt-Regeln: nur mitgeschicktes Wissen und eigene Daten, nichts erfinden; jede Aussage kennzeichnen
   („aus deinem Tagebuch (n Ansitze)“ / „aus dem Jagdwissen“ / „Vermutung“); offen sagen, wenn Daten nicht reichen;

@@ -11,7 +11,7 @@ export async function getRunningHunt(): Promise<Hunt | undefined> {
   return db.hunts.where('status').equals('running').first()
 }
 
-function baseHunt(where: { stand?: Facility; pos?: LatLng; name?: string }, start: number, end: number | null): Hunt {
+export function baseHunt(where: { stand?: Facility; pos?: LatLng; name?: string }, start: number, end: number | null): Hunt {
   const pos = where.stand && where.stand.geometry.type === 'Point' ? fromPos(where.stand.geometry.coordinates) : where.pos!
   const now = Date.now()
   return {

@@ -4,13 +4,20 @@
 export const ALLOWED_MODELS = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'] as const
 export type KiModel = (typeof ALLOWED_MODELS)[number]
 
-/** Art der Anfrage. Schritt 7/8 ergänzen „empfehlung“, „chat“, „rueckmeldung“. */
-export const TASKS = ['test', 'status', 'empfehlung', 'chat', 'rueckmeldung'] as const
+/** Art der Anfrage. „foto“ = handschriftliche Tagebuchseiten lesen (nur diese Aufgabe darf Bilder schicken). */
+export const TASKS = ['test', 'status', 'empfehlung', 'chat', 'rueckmeldung', 'foto'] as const
 export type KiTask = (typeof TASKS)[number]
 
 export interface KiMessage {
   role: 'user' | 'assistant'
   content: string
+}
+
+export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
+export interface KiImage {
+  mediaType: (typeof IMAGE_TYPES)[number]
+  /** Base64 ohne „data:…,“-Vorspann */
+  data: string
 }
 
 export interface KiRequest {
@@ -22,9 +29,11 @@ export interface KiRequest {
   /** stabiler Kontext (Revier, Jagdwissen, Tagebuch …) – wird im Prompt-Cache gehalten */
   context?: string
   messages: KiMessage[]
+  /** Fotos (nur Aufgabe „foto“) – gehen mit der ersten Nachricht an Claude */
+  images?: KiImage[]
 }
 
-export const LIMITS = { messages: 40, messageChars: 20_000, contextChars: 400_000 }
+export const LIMITS = { messages: 40, messageChars: 60_000, contextChars: 400_000, images: 6, imageChars: 5_000_000, imagesTotalChars: 16_000_000 }
 
 export type Checked = { ok: true; req: KiRequest } | { ok: false; error: string }
 
@@ -50,6 +59,20 @@ export function checkRequest(body: unknown): Checked {
     }
     if (msgs.length % 2 === 0) return { ok: false, error: 'Letzte Nachricht muss vom Nutzer sein' }
   }
+  const imgs = b.images ?? []
+  if (!Array.isArray(imgs)) return { ok: false, error: 'Ungültige Bilder' }
+  if (imgs.length && b.task !== 'foto') return { ok: false, error: 'Bilder nur beim Foto-Import' }
+  if (b.task === 'foto' && !imgs.length) return { ok: false, error: 'Kein Foto' }
+  if (imgs.length > LIMITS.images) return { ok: false, error: `Höchstens ${LIMITS.images} Fotos auf einmal` }
+  let total = 0
+  for (const im of imgs) {
+    const { mediaType, data } = (im ?? {}) as Record<string, unknown>
+    if (!(IMAGE_TYPES as readonly string[]).includes(mediaType as string)) return { ok: false, error: 'Bildformat nicht erlaubt' }
+    if (typeof data !== 'string' || !data || data.length > LIMITS.imageChars || !/^[A-Za-z0-9+/=]+$/.test(data))
+      return { ok: false, error: 'Bild ungültig oder zu groß' }
+    total += data.length
+  }
+  if (total > LIMITS.imagesTotalChars) return { ok: false, error: 'Fotos zusammen zu groß' }
   return {
     ok: true,
     req: {
@@ -58,6 +81,7 @@ export function checkRequest(body: unknown): Checked {
       model: b.model as string | undefined,
       context: (b.context as string | undefined) || undefined,
       messages: (msgs as KiMessage[]).map((m) => ({ role: m.role, content: m.content })),
+      images: imgs.length ? (imgs as KiImage[]).map((im) => ({ mediaType: im.mediaType, data: im.data })) : undefined,
     },
   }
 }

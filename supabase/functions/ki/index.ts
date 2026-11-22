@@ -11,7 +11,7 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@1.12.0'
 import { createClient } from 'npm:@supabase/supabase-js@2.119.2'
 import { TASK_SCHEMAS } from './schemas.ts'
-import { allowedUsers, checkRequest, dailyLimit, pickModel, type KiTask } from './validate.ts'
+import { allowedUsers, checkRequest, dailyLimit, pickModel, type KiRequest, type KiTask } from './validate.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -50,6 +50,29 @@ const TASK_PROMPT: Record<KiTask, string> = {
 - Kurz und praxisnah, kein Fülltext.`,
   chat: 'Aufgabe: Fragen des Jägers zu seinem Revier und seinen Daten beantworten.',
   rueckmeldung: 'Aufgabe: Rückmeldung nach dem Ansitz zu Fazit und Fehlern, mit konkreten Tipps.',
+  foto: `Aufgabe: Die Fotos zeigen handschriftliche Seiten aus dem Jagdtagebuch des Jägers. Übertrage sie in Einträge.
+- Ein Eintrag je Ansitz bzw. Jagdtag. Nichts erfinden: Was nicht dasteht, bleibt leer bzw. „nicht notiert“.
+- Datum immer als JJJJ-MM-TT, Uhrzeiten als HH:MM (24 h).
+- Sitz, Wildarten, Klassen, Verhalten und Störungen den mitgeschickten Listen zuordnen, wenn es eindeutig ist (Kennung übernehmen);
+  sonst die Kennung leer lassen und den Text so übernehmen, wie er dasteht.
+- Fazit, Fehler und Notizen möglichst wörtlich; offensichtliche Abkürzungen ausschreiben.
+- Alles, was schwer lesbar ist oder geraten wurde, konkret in „unsicher“ nennen.
+- Diese Aufgabe ist reines Abschreiben – keine Bewertung, keine Tipps; die Regeln zur Kennzeichnung von Aussagen gelten hier nicht.`,
+}
+
+/** Fotos (Aufgabe „foto“) vor den Text der ersten Nachricht setzen */
+function withImages(r: KiRequest): Anthropic.Beta.BetaMessageParam[] {
+  return r.messages.map((m, i) =>
+    i === 0 && r.images?.length
+      ? {
+          role: m.role,
+          content: [
+            ...r.images.map((im) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: im.mediaType, data: im.data } })),
+            { type: 'text' as const, text: m.content },
+          ],
+        }
+      : m,
+  )
 }
 
 /** Schlüssel ohne versehentliche Leerzeichen, Zeilenumbrüche oder Anführungszeichen (häufiger Kopierfehler) */
@@ -117,7 +140,7 @@ Deno.serve(async (req) => {
   try {
     const res = await client.beta.messages.create({
       model,
-      max_tokens: r.task === 'test' ? 2000 : 12000,
+      max_tokens: r.task === 'test' ? 2000 : r.task === 'foto' ? 16000 : 12000,
       output_config: {
         effort: r.task === 'test' ? 'low' : 'medium',
         // feste Antwortstruktur je Aufgabe (z. B. Empfehlung als JSON)
@@ -126,7 +149,7 @@ Deno.serve(async (req) => {
       // Bei einer Ablehnung durch Sicherheitsfilter automatisch ein passendes Ersatzmodell (nicht bei Haiku)
       ...(model.startsWith('claude-haiku') ? {} : { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const }),
       system,
-      messages: r.messages,
+      messages: withImages(r),
     })
     const text = res.content
       .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')

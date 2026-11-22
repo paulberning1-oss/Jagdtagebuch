@@ -1,6 +1,6 @@
 import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { CalendarPlus, ChevronRight, CloudOff, Moon, Play, Square, Telescope, Target } from 'lucide-react'
+import { CalendarPlus, Camera, ChevronRight, CloudOff, Moon, Play, Square, Telescope, Target } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { confirmTrash, SelectActions, SelectButton, SelectCheck, SelectToolbar, TRASH_HINT, useSelection } from '../components/Selection'
 import { Stars, useToast } from '../components/ui'
@@ -10,6 +10,7 @@ import type { Hunt, Sighting } from '../domain/hunt'
 import { fmtDuration, useNow, useRunningHunt } from '../journal/hooks'
 import { HuntDetail } from '../journal/HuntDetail'
 import { HuntForm } from '../journal/HuntForm'
+import { PhotoImportPage } from '../journal/PhotoImportPage'
 import { deleteHunt, endHunt, newSighting } from '../journal/huntActions'
 import { SightingEditor } from '../journal/SightingEditor'
 import { PastHuntSheet, StartHuntSheet } from '../journal/StartHuntSheet'
@@ -17,6 +18,7 @@ import { navigate } from '../lib/router'
 import { fmtDate, fmtTime } from '../lib/time'
 
 export default function JournalPage({ parts }: { parts: string[] }) {
+  if (parts[0] === 'foto') return <PhotoImportPage />
   if (parts[0] && parts[1] === 'bearbeiten') return <HuntForm key={parts[0]} id={parts[0]} />
   if (parts[0]) return <HuntDetail key={parts[0]} id={parts[0]} />
   return <JournalHome />
@@ -59,6 +61,9 @@ function JournalHome() {
               </button>
               <button className="btn" onClick={() => setSheet('past')}>
                 <CalendarPlus /> Vergangenen Ansitz nachtragen
+              </button>
+              <button className="btn" onClick={() => navigate('tagebuch', 'foto')}>
+                <Camera /> Aus Foto nachtragen (Handschrift)
               </button>
             </div>
           )

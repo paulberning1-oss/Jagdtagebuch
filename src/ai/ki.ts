@@ -3,9 +3,9 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../cloud/supabase'
 import { getSetting } from '../db/settings'
-import type { KiMessage, KiTask } from '../../supabase/functions/ki/validate'
+import type { KiImage, KiMessage, KiTask } from '../../supabase/functions/ki/validate'
 
-export type { KiMessage, KiTask }
+export type { KiImage, KiMessage, KiTask }
 
 /** Version des Zustimmungstextes – bei wesentlichen Änderungen erhöhen (dann wird neu gefragt) */
 export const KI_CONSENT_VERSION = 1
@@ -110,12 +110,12 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
   return data as T
 }
 
-/** Frage an die KI. `context` = stabiler Teil (wird auf dem Server zwischengespeichert). */
-export async function askKi(task: Exclude<KiTask, 'status'>, messages: KiMessage[], context?: string): Promise<KiAnswer> {
+/** Frage an die KI. `context` = stabiler Teil (wird auf dem Server zwischengespeichert); `images` nur für „foto“. */
+export async function askKi(task: Exclude<KiTask, 'status'>, messages: KiMessage[], context?: string, images?: KiImage[]): Promise<KiAnswer> {
   const consent = await getSetting('kiConsent')
   if (!consent || consent.version < KI_CONSENT_VERSION) throw new KiError('consent_missing', kiErrorText('consent_missing'))
   const model = await getSetting('kiModel')
-  return call<KiAnswer>({ task, consent: true, model: model || undefined, context, messages })
+  return call<KiAnswer>({ task, consent: true, model: model || undefined, context, messages, images })
 }
 
 /** Stand des Tageslimits und Einrichtung (zählt nicht als Anfrage) */
