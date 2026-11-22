@@ -7,6 +7,7 @@ import { Stars, useToast } from '../components/ui'
 import { db } from '../db/db'
 import { relText, weatherCodeText } from '../domain/environment'
 import { ACTIVITY_LEVELS, effectiveEnv, HUNT_TYPES, type Hunt } from '../domain/hunt'
+import { individualText } from '../domain/sightings'
 import { navigate } from '../lib/router'
 import { fmtDate, fmtTime } from '../lib/time'
 import { loadHuntWeather } from '../services/weatherSync'
@@ -218,6 +219,7 @@ export function HuntDetail({ id }: { id: string }) {
                   {fmtTime(new Date(s.time))} · {s.count}× {speciesMap.get(s.speciesId)?.name ?? s.speciesId}
                   {s.sexAge.length ? ` (${s.sexAge.join(', ')})` : ''}{s.ageEstimate ? ` · ${s.ageEstimate}` : ''}
                   {s.behavior ? `, ${s.behavior}` : ''}
+                  {s.recognition ? ` · ${individualText(s)}` : ''}
                 </li>
               ))}
             </ul>

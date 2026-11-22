@@ -23,6 +23,8 @@ export interface Settings {
   ruleSettings: RuleSettings
   /** Kompass auf der Karte eingeblendet (nur dieses Gerät) */
   compassOpen: boolean
+  /** Heatmap der Sichtungen auf der Revierkarte eingeblendet (nur dieses Gerät) */
+  mapHeatmap: boolean
   /** Zustimmung zur Datenübertragung an die Claude-API (für das Konto, synchronisiert) */
   kiConsent: { at: number; version: number } | null
   /** Gewähltes KI-Modell ('' = Standard des Servers) */
@@ -43,6 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   assistantSpecies: 'rehwild',
   ruleSettings: {},
   compassOpen: false,
+  mapHeatmap: false,
   kiConsent: null,
   kiModel: '',
   kiUnverified: false,

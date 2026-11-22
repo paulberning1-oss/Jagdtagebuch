@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { destination } from '../lib/geo'
 import { fromBerlinLocal } from '../lib/time'
 import type { Sighting } from './hunt'
-import { EMPTY_FILTER, filterSightings, heatGrid, huntingYearStart, periodOf } from './sightings'
+import { EMPTY_FILTER, filterSightings, heatGrid, huntingYearStart, individualText, knownIndividuals, periodOf } from './sightings'
 
 const c = { lat: 52.64, lng: 10.3 }
 let n = 0
@@ -27,7 +27,7 @@ function s(partial: Partial<Sighting>): Sighting {
 }
 
 describe('Sichtungen filtern', () => {
-  const list = [
+  const list: Sighting[] = [
     s({ speciesId: 'rehwild', time: fromBerlinLocal('2026-11-10T16:00').getTime() }), // Abend
     s({ speciesId: 'schwarzwild', time: fromBerlinLocal('2026-11-10T23:30').getTime(), source: 'wildkamera' }), // Nacht
     s({ speciesId: 'rehwild', time: fromBerlinLocal('2026-06-01T05:00').getTime() }), // Morgen
@@ -63,5 +63,30 @@ describe('Heatmap-Raster', () => {
     expect(cells).toHaveLength(2)
     const big = cells.find((x) => x.value === 5)
     expect(big?.sightings).toBe(2)
+  })
+})
+
+describe('Wiedererkannte Stücke', () => {
+  const base = { huntId: null, count: 1, behavior: '', direction: null, lat: 52, lng: 7, source: 'eigen' as const, notes: '', photoIds: [], createdAt: 0 }
+  const list: Sighting[] = [
+    { ...base, id: 'a', time: 1000, speciesId: 'rehwild', sexAge: ['Jährling / Spießer'], recognition: 'neu' as const, individual: 'Knopfbock' },
+    { ...base, id: 'b', time: 3000, speciesId: 'rehwild', sexAge: ['Bock'], recognition: 'wieder' as const, individual: ' knopfbock ' },
+    { ...base, id: 'c', time: 2000, speciesId: 'rehwild', sexAge: ['Ricke'], recognition: 'neu' as const, individual: 'Zwillingsricke' },
+    { ...base, id: 'd', time: 4000, speciesId: 'rehwild', sexAge: ['Ricke'] }, // normale Sichtung
+    { ...base, id: 'e', time: 5000, speciesId: 'schwarzwild', sexAge: [], recognition: 'neu' as const, individual: 'Knopfbock' },
+  ]
+  it('fasst gleiche Namen zusammen, jüngste zuerst, nur gleiche Wildart', () => {
+    const k = knownIndividuals(list, 'rehwild')
+    expect(k.map((x) => [x.name, x.seen])).toEqual([
+      ['Knopfbock', 2],
+      ['Zwillingsricke', 1],
+    ])
+    expect(k[0].sexAge).toEqual(['Bock'])
+    expect(knownIndividuals(list, 'rehwild', 'c').map((x) => x.name)).toEqual(['Knopfbock'])
+  })
+  it('Kurztext', () => {
+    expect(individualText(list[1])).toBe('„knopfbock“ (wieder gesehen)')
+    expect(individualText({ recognition: 'neu' })).toBe('neues Stück')
+    expect(individualText(list[3])).toBe('')
   })
 })

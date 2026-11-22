@@ -24,6 +24,7 @@ import {
   type Season,
 } from '../domain/knowledge'
 import { phaseLabel } from '../domain/phases'
+import { individualText } from '../domain/sightings'
 import { windFromOf, windSpeedOf } from '../domain/rules'
 import { inShootingField, shootingField } from '../domain/shootingField'
 import { bearing, compass8, distance, fromPos, lineLength, pointInPolygon, polygonArea, type LatLng } from '../lib/geo'
@@ -248,7 +249,7 @@ function huntLine(h: Hunt, sightings: Sighting[], names: Map<string, string>, fa
   const o = outcomeOf(h, sightings, speciesId)
   const route = h.routeId ? facilities.get(h.routeId) : null
   const seen = sightings
-    .map((s) => `${s.count} ${names.get(s.speciesId) ?? s.speciesId}${s.sexAge.length ? ` (${s.sexAge.join(', ')})` : ''} ${fmtTime(new Date(s.time))}${s.behavior ? ` ${s.behavior}` : ''}`)
+    .map((s) => `${s.count} ${names.get(s.speciesId) ?? s.speciesId}${s.sexAge.length ? ` (${s.sexAge.join(', ')})` : ''} ${fmtTime(new Date(s.time))}${s.behavior ? ` ${s.behavior}` : ''}${s.recognition ? ` [${individualText(s)}]` : ''}`)
     .join('; ')
   const kills = h.kills.map((k) => `${names.get(k.speciesId) ?? k.speciesId}${k.sexAge ? ` (${k.sexAge})` : ''}`).join(', ')
   const parts = [

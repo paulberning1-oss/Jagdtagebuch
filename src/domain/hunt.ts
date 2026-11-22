@@ -187,6 +187,13 @@ export interface Sighting {
   direction: number | null
   /** Altersschätzung (optional), z. B. „Jährling“ oder „4–6 Jahre“ */
   ageEstimate?: string
+  /**
+   * Wiedererkennung: „neu“ = erkennbares Stück zum ersten Mal gesehen, „wieder“ = schon einmal gesehen.
+   * Fehlt = normale Sichtung (nicht erkennbar).
+   */
+  recognition?: 'neu' | 'wieder'
+  /** Name/Merkmal des Stücks, z. B. „Bock mit Knopfgehörn“ (bei „neu“/„wieder“) */
+  individual?: string
   lat: number
   lng: number
   source: SightingSource

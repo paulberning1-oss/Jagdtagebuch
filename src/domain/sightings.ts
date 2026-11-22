@@ -115,3 +115,45 @@ export function heatColor(value: number, max: number): string {
   const c = stops[seg].map((v, i) => Math.round(v + (stops[seg + 1][i] - v) * lt))
   return `rgb(${c.join(',')})`
 }
+
+// ---------- Wiedererkannte Stücke ----------
+
+export interface KnownIndividual {
+  name: string
+  /** Wie oft gesehen (Sichtungen) */
+  seen: number
+  first: number
+  last: number
+  /** Klassen aus der jüngsten Sichtung (z. B. Bock) */
+  sexAge: string[]
+}
+
+const normName = (s: string) => s.trim().toLowerCase().replace(/s+/g, ' ')
+
+/** Bekannte Stücke einer Wildart (aus Sichtungen mit Namen), zuletzt gesehene zuerst */
+export function knownIndividuals(list: Sighting[], speciesId: string, excludeId?: string): KnownIndividual[] {
+  const m = new Map<string, KnownIndividual>()
+  for (const s of list) {
+    if (s.id === excludeId || s.speciesId !== speciesId || !s.individual?.trim() || !s.recognition) continue
+    const key = normName(s.individual)
+    const k = m.get(key)
+    if (!k) m.set(key, { name: s.individual.trim(), seen: 1, first: s.time, last: s.time, sexAge: s.sexAge })
+    else {
+      k.seen++
+      k.first = Math.min(k.first, s.time)
+      if (s.time > k.last) {
+        k.last = s.time
+        k.sexAge = s.sexAge
+      }
+    }
+  }
+  return [...m.values()].sort((a, b) => b.last - a.last)
+}
+
+/** Kurztext für Listen: „„Knopfbock“ (wieder gesehen)“ */
+export function individualText(s: Pick<Sighting, 'recognition' | 'individual'>): string {
+  if (!s.recognition) return ''
+  const name = s.individual?.trim()
+  if (s.recognition === 'neu') return name ? `„${name}“ (neues Stück)` : 'neues Stück'
+  return name ? `„${name}“ (wieder gesehen)` : 'schon gesehen'
+}

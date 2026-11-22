@@ -6,9 +6,12 @@ import { Chip, ChipGroup, Section, Stepper } from '../components/ui'
 import { ClassPicker } from '../components/ClassPicker'
 import { classTree } from '../domain/speciesClasses'
 import { SIGHTING_SOURCES, type Sighting } from '../domain/hunt'
+import { knownIndividuals } from '../domain/sightings'
+import { db } from '../db/db'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { BEHAVIORS } from '../domain/species'
 import { COMPASS_8, distance, type LatLng } from '../lib/geo'
-import { fromBerlinLocal, toBerlinLocal } from '../lib/time'
+import { fmtDate, fromBerlinLocal, toBerlinLocal } from '../lib/time'
 import { MapPicker } from '../map/MapPicker'
 import { PhotoThumb } from '../map/FacilityEditor'
 import { useSpecies } from './hooks'
@@ -67,7 +70,7 @@ export function SightingEditor({
         <Section title="Wildart">
           <div className="flex flex-wrap gap-2">
             {species.map((x) => (
-              <Chip key={x.id} active={s.speciesId === x.id} onClick={() => set({ speciesId: x.id, sexAge: [] })}>
+              <Chip key={x.id} active={s.speciesId === x.id} onClick={() => set({ speciesId: x.id, sexAge: [], ...(x.id !== s.speciesId ? { recognition: undefined, individual: undefined } : {}) })}>
                 {x.name}
               </Chip>
             ))}
@@ -80,6 +83,10 @@ export function SightingEditor({
 
         <Section title={`${sp?.name ?? 'Wildart'}: ${classTree(sp)[0]?.label.startsWith('männlich') ? 'Geschlecht und Alter' : 'Art und Klasse'}`}>
           <ClassPicker key={s.speciesId} species={sp} value={s.sexAge} onChange={(sexAge) => set({ sexAge })} />
+        </Section>
+
+        <Section title="Stück wiedererkannt?">
+          <Recognition s={s} speciesName={sp?.name ?? 'Wildart'} onChange={set} />
         </Section>
 
         <Section title="Bemerkung zum Alter (optional)">
@@ -190,5 +197,82 @@ function EnvSummary({ s }: { s: Sighting }) {
       {parts.join(' · ')}
       {s.weatherStatus && s.weatherStatus !== 'ok' && ' · Wetter wird nachgeladen'}
     </p>
+  )
+}
+
+/** Normale Sichtung / neues, erkennbares Stück / schon gesehenes Stück */
+function Recognition({ s, speciesName, onChange }: { s: Sighting; speciesName: string; onChange: (p: Partial<Sighting>) => void }) {
+  const all = useLiveQuery(() => db.sightings.toArray(), []) ?? []
+  const known = knownIndividuals(all, s.speciesId, s.id)
+  const mode = s.recognition ?? 'normal'
+  return (
+    <>
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        {(
+          [
+            ['normal', 'Normale Sichtung'],
+            ['neu', 'Neues Stück'],
+            ['wieder', 'Schon gesehen'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={`btn !min-h-14 !px-1 !text-sm leading-tight ${mode === id ? 'btn-primary' : ''}`}
+            onClick={() =>
+              onChange(id === 'normal' ? { recognition: undefined, individual: undefined } : { recognition: id, individual: id === mode ? s.individual : '' })
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === 'normal' && <p className="text-sm text-ink-dim">Wenn du das Stück nicht sicher erkennst, einfach so lassen.</p>}
+      {mode === 'neu' && (
+        <>
+          <input
+            className="input"
+            value={s.individual ?? ''}
+            onChange={(e) => onChange({ individual: e.target.value })}
+            placeholder="Name oder Merkmal, z. B. „Knopfbock“, „Ricke mit Zwillingen“"
+          />
+          <p className="mt-1 text-sm text-ink-dim">Mit Namen kannst du das Stück beim nächsten Mal unter „Schon gesehen“ auswählen.</p>
+        </>
+      )}
+      {mode === 'wieder' && (
+        <>
+          {known.length ? (
+            <div className="mb-2 grid gap-2">
+              {known.map((k) => (
+                <button
+                  key={k.name}
+                  type="button"
+                  className={`btn !min-h-12 !justify-start !text-left !text-base ${s.individual?.trim().toLowerCase() === k.name.toLowerCase() ? 'btn-primary' : ''}`}
+                  onClick={() => onChange({ individual: k.name, ...(s.sexAge.length ? {} : { sexAge: k.sexAge }) })}
+                >
+                  <span className="flex-1">
+                    „{k.name}“
+                    <span className="block text-xs font-normal opacity-80">
+                      {k.seen}× gesehen · zuletzt {fmtDate(new Date(k.last))}
+                      {k.sexAge.length ? ` · ${k.sexAge.join(', ')}` : ''}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="mb-2 text-sm text-hint">
+              Noch kein {speciesName}-Stück mit Namen erfasst. Wähle beim ersten Mal „Neues Stück“ und gib ihm einen Namen – oder trag ihn hier ein.
+            </p>
+          )}
+          <input
+            className="input"
+            value={s.individual ?? ''}
+            onChange={(e) => onChange({ individual: e.target.value })}
+            placeholder="oder Name/Merkmal eintippen"
+          />
+        </>
+      )}
+    </>
   )
 }

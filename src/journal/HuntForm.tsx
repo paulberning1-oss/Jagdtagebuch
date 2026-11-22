@@ -8,6 +8,7 @@ import { db } from '../db/db'
 import { typeInfo } from '../domain/facilityTypes'
 import { SpeechTextarea } from '../components/SpeechTextarea'
 import { ACTIVITY_LEVELS, DISTURBANCES, HUNT_TYPES, type Hunt, type Kill, type Sighting } from '../domain/hunt'
+import { individualText } from '../domain/sightings'
 import { suggestPhases } from '../domain/phases'
 import { useCalendar, useSpeciesNames } from '../knowledge/hooks'
 import { ConditionsEditor } from './ConditionsEditor'
@@ -212,6 +213,7 @@ export function HuntForm({ id }: { id: string }) {
                   <span className="block">
                     {s.count}× {speciesMap.get(s.speciesId)?.name ?? s.speciesId}
                     {s.sexAge.length ? ` · ${s.sexAge.join(', ')}` : ''}{s.ageEstimate ? ` · ${s.ageEstimate}` : ''}
+                    {s.recognition ? ` · ${individualText(s)}` : ''}
                   </span>
                   <span className="block text-sm font-normal text-ink-dim">
                     {fmtTime(new Date(s.time))} Uhr{s.behavior ? ` · ${s.behavior}` : ''}

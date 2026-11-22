@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { allTypes, facilityColor, registerCustomCategories, typeInfo, typesOfKind, type Category } from './facilityTypes'
+import { allTypes, drawRank, facilityColor, labelMinZoom, registerCustomCategories, typeInfo, typesOfKind, type Category } from './facilityTypes'
 
 const polter: Category = {
   id: 'k_polter',
@@ -39,5 +39,18 @@ describe('Kategorien', () => {
   it('eigene Farbe eines Objekts geht vor', () => {
     expect(facilityColor({ type: 'weg' })).toBe(typeInfo('weg').color)
     expect(facilityColor({ type: 'weg', color: '#ff0000' })).toBe('#ff0000')
+  })
+})
+
+describe('Reihenfolge auf der Karte', () => {
+  const f = (type: string, g: string) => ({ type, geometry: { type: g } })
+  it('Neuanpflanzung/Zaun/Feld/Weg ganz unten, Sitze oben, Beschriftung im Hintergrund erst nah', () => {
+    const order = [f('hochsitz', 'Point'), f('dickung', 'Polygon'), f('neuanpflanzung', 'Polygon'), f('wechsel', 'LineString'), f('weg', 'LineString'), f('kirrung', 'Point')]
+      .sort((a, b) => drawRank(a) - drawRank(b))
+      .map((x) => x.type)
+    expect(order).toEqual(['neuanpflanzung', 'dickung', 'weg', 'wechsel', 'kirrung', 'hochsitz'])
+    expect(labelMinZoom(f('neuanpflanzung', 'Polygon'))).toBe(18)
+    expect(labelMinZoom(f('hochsitz', 'Point'))).toBe(15)
+    expect(labelMinZoom(f('kirrung', 'Point'))).toBe(16)
   })
 })

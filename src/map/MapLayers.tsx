@@ -3,9 +3,9 @@ import L from 'leaflet'
 import { useEffect, useMemo, useRef } from 'react'
 import { Circle, CircleMarker, Marker, Polygon, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import type { Boundary, Facility } from '../db/db'
-import { facilityColor, typeInfo } from '../domain/facilityTypes'
+import { BACKGROUND_TYPES, drawRank, facilityColor, labelMinZoom, typeInfo } from '../domain/facilityTypes'
 import { shootingField, shootingFieldPolygon } from '../domain/shootingField'
-import { fromPos, sector, type LatLng } from '../lib/geo'
+import { fromPos, polygonArea, sector, type LatLng } from '../lib/geo'
 import { fetchGoogleAttribution } from './googleTiles'
 import { providerById, type TileProvider } from './providers'
 
@@ -133,6 +133,7 @@ export function FacilityLayer({
   selectedId,
   highlightIds,
   showLabels,
+  zoom,
   onSelect,
 }: {
   facilities: Facility[]
@@ -140,12 +141,14 @@ export function FacilityLayer({
   selectedId?: string | null
   highlightIds?: Set<string>
   showLabels: boolean
+  /** Zoomstufe – Namen erscheinen je nach Kategorie erst ab einer bestimmten Nähe (`labelMinZoom`) */
+  zoom?: number
   onSelect: (f: Facility) => void
 }) {
-  // Flächen zuerst (unten), dann Linien, dann Punkte (oben)
+  // Hintergrund (Neuanpflanzung, Zaun, Feld, Weg) ganz unten, dann Flächen (große unter kleinen), Linien, Punkte, Sitze oben
   const sorted = useMemo(() => {
-    const rank = (f: Facility) => (f.geometry.type === 'Polygon' ? 0 : f.geometry.type === 'LineString' ? 1 : 2)
-    return [...facilities].sort((a, b) => rank(a) - rank(b))
+    const area = (f: Facility) => (f.geometry.type === 'Polygon' ? polygonArea(f.geometry.coordinates[0].map(fromPos)) : 0)
+    return [...facilities].sort((a, b) => drawRank(a) - drawRank(b) || area(b) - area(a))
   }, [facilities])
 
   return (
@@ -157,8 +160,11 @@ export function FacilityLayer({
         const sel = selectedId === f.id
         const key = `${f.id}-${interactive ? 1 : 0}-${f.updatedAt}`
         const handlers = { click: () => onSelect(f) }
-        const label = showLabels && f.name ? (
-          <Tooltip permanent direction="bottom" offset={[0, 14]} className="facility-label">
+        const bg = BACKGROUND_TYPES.has(f.type)
+        const withLabel = showLabels && !!f.name && (zoom == null || zoom >= labelMinZoom(f))
+        const labelClass = bg ? 'facility-label faint' : 'facility-label'
+        const label = withLabel ? (
+          <Tooltip permanent direction="bottom" offset={[0, 14]} className={labelClass}>
             {f.name}
           </Tooltip>
         ) : null
@@ -173,14 +179,14 @@ export function FacilityLayer({
               eventHandlers={handlers}
               pathOptions={{
                 color: hl ? '#ef6b4a' : color,
-                weight: hl || sel ? 4 : 2,
+                weight: hl || sel ? 4 : bg ? 1.5 : 2,
                 fillColor: color,
-                fillOpacity: 0.22,
+                fillOpacity: bg ? 0.12 : 0.22,
                 dashArray: info.dash,
               }}
             >
-              {showLabels && f.name && (
-                <Tooltip permanent direction="center" className="facility-label">
+              {withLabel && (
+                <Tooltip permanent direction="center" className={labelClass}>
                   {f.name}
                 </Tooltip>
               )}
@@ -194,10 +200,10 @@ export function FacilityLayer({
               positions={f.geometry.coordinates.map(fromPos)}
               interactive={interactive}
               eventHandlers={handlers}
-              pathOptions={{ color: hl ? '#ef6b4a' : color, weight: hl || sel ? 7 : 5, dashArray: info.dash }}
+              pathOptions={{ color: hl ? '#ef6b4a' : color, weight: hl || sel ? 7 : bg ? 3 : 5, opacity: bg && !hl && !sel ? 0.7 : 1, dashArray: info.dash }}
             >
-              {showLabels && f.name && (
-                <Tooltip permanent direction="center" className="facility-label">
+              {withLabel && (
+                <Tooltip permanent direction="center" className={labelClass}>
                   {f.name}
                 </Tooltip>
               )}

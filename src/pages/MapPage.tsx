@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import L from 'leaflet'
-import { Compass, Crosshair, Fence, Layers, List, LocateFixed, Plus, Timer, Undo2, Wind, X } from 'lucide-react'
+import { Compass, Crosshair, Fence, Flame, Layers, List, LocateFixed, Plus, Timer, Undo2, Wind, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, useMap } from 'react-leaflet'
 import { Chip, useToast } from '../components/ui'
@@ -12,6 +12,8 @@ import { typeInfo, type FacilityType } from '../domain/facilityTypes'
 import { attachToStand } from '../domain/approach'
 import { CompassRose, requestCompassPermission } from '../map/CompassRose'
 import { DEFAULT_WIDTH } from '../domain/shootingField'
+import { EMPTY_FILTER, filterSightings } from '../domain/sightings'
+import { SightingHeatmap } from '../sightings/SightingLayers'
 import { fromPos, toPos, type LatLng } from '../lib/geo'
 import { newId } from '../lib/id'
 import { savePhoto } from '../lib/image'
@@ -85,6 +87,12 @@ export default function MapPage() {
   const mapRef = useRef<L.Map | null>(null)
   const baseLayer = useSetting('baseLayer')
   const compassOpen = useSetting('compassOpen')
+  // Heatmap der Sichtungen (gleicher Filter wie auf der Seite „Sichtungen“)
+  const heatmapOn = useSetting('mapHeatmap') ?? false
+  const sightingFilter = useSetting('sightingFilter') ?? EMPTY_FILTER
+  const allSightings = useLiveQuery(() => (heatmapOn ? db.sightings.toArray() : []), [heatmapOn])
+  const heatSightings = useMemo(() => (allSightings ? filterSightings(allSightings, sightingFilter) : []), [allSightings, sightingFilter])
+  const heatOrigin = useMemo(() => (allSightings?.length ? { lat: allSightings[0].lat, lng: allSightings[0].lng } : null), [allSightings])
   const toast = useToast()
 
   const [initialView, setInitialView] = useState<InitialView | null>(null)
@@ -410,13 +418,15 @@ export default function MapPage() {
         {mode.t === 'overlay' && (
           <OverlayHandles corners={mode.corners} mode={mode.handleMode} onChange={(corners) => setMode((m) => (m.t === 'overlay' ? { ...m, corners } : m))} />
         )}
+        {heatmapOn && <SightingHeatmap sightings={heatSightings} zoom={zoom} origin={heatOrigin} />}
         <BoundaryLayer boundaries={boundaries} interactive={interactive} onSelect={(b: Boundary) => setPanel({ t: 'boundary', id: b.id })} />
         <FacilityLayer
           facilities={facilities}
           interactive={interactive}
           selectedId={panel.t === 'edit' ? panel.id : panel.t === 'wind' ? panel.standId : null}
           highlightIds={cone?.highlightIds}
-          showLabels={zoom >= 16}
+          showLabels
+          zoom={zoom}
           onSelect={onSelectFacility}
         />
         {revierWind && panel.t === 'windRevier' && <RevierWindLayer {...revierWind} />}
@@ -565,6 +575,20 @@ export default function MapPage() {
             aria-label="Wind & Witterung"
           >
             <Wind />
+          </button>
+          <button
+            className={`btn-round ${heatmapOn ? '!bg-accent !text-accent-ink' : ''}`}
+            onClick={async () => {
+              await setSetting('mapHeatmap', !heatmapOn)
+              if (!heatmapOn) {
+                const n = filterSightings(await db.sightings.toArray(), sightingFilter).length
+                toast(n ? `Heatmap: ${n} Sichtungen (Filter wie unter „Sichtungen“)` : 'Noch keine Sichtungen für die Heatmap')
+              }
+            }}
+            aria-label={heatmapOn ? 'Heatmap der Sichtungen ausblenden' : 'Heatmap der Sichtungen einblenden'}
+            aria-pressed={heatmapOn}
+          >
+            <Flame />
           </button>
           <button
             className={`btn-round ${compassOpen ? '!bg-accent !text-accent-ink' : ''}`}

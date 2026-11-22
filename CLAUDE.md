@@ -255,6 +255,13 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   „Frei“ (perspektivisch). „Form zurücksetzen“ = Rechteck im Bild-Seitenverhältnis. „Foto einpassen“ zoomt auf alle Ecken.
   Hinweisleiste oben ist `pointer-events-none`, damit Ecken darunter greifbar bleiben.
 - Wildart nur löschbar, wenn nirgends verwendet.
+- Karte: Knopf mit Flamme = Heatmap der Sichtungen ein/aus (Setting `mapHeatmap`, nur dieses Gerät, gleicher Filter wie Seite
+  „Sichtungen“), liegt unter allen Objekten. Zeichen-Reihenfolge `drawRank` (`facilityTypes.ts`): Hintergrund (`BACKGROUND_TYPES`:
+  Neuanpflanzung, Zaun, Feld, Weg) ganz unten, blasser, Namen erst ab Zoom 18 (`labelMinZoom`, Klasse `facility-label faint`);
+  Sitze oben, Namen ab 15, Rest ab 16.
+- Sichtung „Stück wiedererkannt?“: `recognition` ('neu'/'wieder', fehlt = normale Sichtung) + `individual` (Name/Merkmal);
+  Auswahl bekannter Stücke je Wildart über `knownIndividuals` (`src/domain/sightings.ts`). Geht als Text an die KI.
+- Wildkamera-Import: je Bild Geschlecht/Alter per `ClassPicker`; Serien vereinen die Klassen.
 - Klassen in Stufen (`src/domain/speciesClasses.ts`, `CLASS_TREES`, Anzeige `src/components/ClassPicker.tsx`): Wildart → Geschlecht
   (männlich/weiblich/unbekannt; bei Gänsen/Enten „Art“) → Klasse mit Alter (z. B. Jährling / Spießer, Schmalreh). Gespeichert wird weiter nur
   der Klassenname in `sexAge` (Sichtung: mehrere, Erlegung: einer); alte Namen (Bock, Ricke …) sind im Baum enthalten. Eigene Wildarten

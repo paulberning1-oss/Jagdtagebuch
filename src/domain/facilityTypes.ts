@@ -146,3 +146,27 @@ export const kindOfGeometry = (g: { type: string }): GeometryKind => (g.type ===
 
 /** Farbe eines Objekts: eigene Farbe, sonst die der Kategorie */
 export const facilityColor = (f: { type: FacilityType; color?: string | null }) => f.color || typeInfo(f.type).color
+
+// ---------- Reihenfolge und Beschriftung auf der Karte ----------
+
+/** Kategorien, die nur Hintergrund sind (unten gezeichnet, Beschriftung erst nah und blass) */
+export const BACKGROUND_TYPES = new Set(['neuanpflanzung', 'zaun', 'feld', 'weg'])
+
+type Drawable = { type: FacilityType; geometry: { type: string } }
+
+/**
+ * Zeichen-Reihenfolge (klein = unten): Hintergrund-Flächen → Flächen → Hintergrund-Linien → Linien → Punkte → Sitze.
+ * So liegen Neuanpflanzungen, Zäune, Felder und Wege hinter allem anderen.
+ */
+export function drawRank(f: Drawable): number {
+  const bg = BACKGROUND_TYPES.has(f.type)
+  if (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') return bg ? 0 : 1
+  if (f.geometry.type === 'LineString') return bg ? 2 : 3
+  return typeInfo(f.type).isStand ? 5 : 4
+}
+
+/** Ab welcher Zoomstufe der Name dauerhaft angezeigt wird */
+export function labelMinZoom(f: Drawable): number {
+  if (typeInfo(f.type).isStand) return 15
+  return BACKGROUND_TYPES.has(f.type) ? 18 : 16
+}

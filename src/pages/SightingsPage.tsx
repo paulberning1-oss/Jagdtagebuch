@@ -8,7 +8,7 @@ import { db } from '../db/db'
 import { trashSightings } from '../db/trash'
 import { getSetting, setSetting, useSetting } from '../db/settings'
 import type { Sighting } from '../domain/hunt'
-import { EMPTY_FILTER, filterSightings } from '../domain/sightings'
+import { EMPTY_FILTER, filterSightings, individualText } from '../domain/sightings'
 import type { LatLng } from '../lib/geo'
 import { fmtDateTime } from '../lib/time'
 import { useSpecies, useSpeciesMap } from '../journal/hooks'
@@ -89,7 +89,7 @@ export default function SightingsPage() {
           <PhotoOverlayLayer key={o.id} overlay={o} />
         ))}
         <BoundaryLayer boundaries={boundaries} interactive={false} onSelect={noop} />
-        <FacilityLayer facilities={facilities} interactive={false} showLabels={zoom >= 16} onSelect={noop} />
+        <FacilityLayer facilities={facilities} interactive={false} showLabels zoom={zoom} onSelect={noop} />
         <MapClicks
           onClick={(p) => {
             if (!adding) return
@@ -207,6 +207,7 @@ export default function SightingsPage() {
                     <span className="block">
                       {s.count}× {speciesMap.get(s.speciesId)?.name ?? s.speciesId}
                       {s.sexAge.length ? ` (${s.sexAge.join(', ')})` : ''}
+                      {s.recognition ? ` · ${individualText(s)}` : ''}
                       {s.demo && <span className="ml-2 text-xs font-normal text-ink-dim">Beispiel</span>}
                     </span>
                     <span className="block text-sm font-normal text-ink-dim">

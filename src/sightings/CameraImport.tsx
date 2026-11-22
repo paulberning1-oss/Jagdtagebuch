@@ -4,6 +4,7 @@ import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AlertTriangle, Camera, ImagePlus, Loader2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { ClassPicker } from '../components/ClassPicker'
 import { Chip, Section, Stepper, useToast } from '../components/ui'
 import { db } from '../db/db'
 import type { Sighting } from '../domain/hunt'
@@ -24,6 +25,8 @@ interface Item {
   exif: boolean
   speciesId: string | null
   count: number
+  /** Geschlecht/Alter (wie bei Sichtungen) */
+  sexAge: string[]
   skip: boolean
 }
 
@@ -63,7 +66,7 @@ export function CameraImport({ onClose }: { onClose: () => void }) {
     const next: Item[] = []
     for (const file of Array.from(files)) {
       const time = await readCaptureTime(file)
-      next.push({ key: newId(), file, url: URL.createObjectURL(file), time, exif: !!time, speciesId: null, count: 1, skip: false })
+      next.push({ key: newId(), file, url: URL.createObjectURL(file), time, exif: !!time, speciesId: null, count: 1, sexAge: [], skip: false })
     }
     next.sort((a, b) => (a.time?.getTime() ?? 0) - (b.time?.getTime() ?? 0))
     setItems((v) => [...v, ...next])
@@ -71,7 +74,7 @@ export function CameraImport({ onClose }: { onClose: () => void }) {
   }
 
   const set = (key: string, patch: Partial<Item>) => setItems((v) => v.map((i) => (i.key === key ? { ...i, ...patch } : i)))
-  const setAllSpecies = (speciesId: string) => setItems((v) => v.map((i) => (i.skip ? i : { ...i, speciesId })))
+  const setAllSpecies = (speciesId: string) => setItems((v) => v.map((i) => (i.skip ? i : { ...i, speciesId, sexAge: i.speciesId === speciesId ? i.sexAge : [] })))
 
   const ready = items.filter((i) => !i.skip && i.speciesId && i.time)
   const missingTime = items.filter((i) => !i.skip && !i.time).length
@@ -101,7 +104,8 @@ export function CameraImport({ onClose }: { onClose: () => void }) {
           speciesId: g[0].speciesId,
           // Bei einer Serie: höchste Anzahl auf einem Bild (nicht addieren – es sind dieselben Tiere)
           count: Math.max(...g.map((x) => x.count)),
-          sexAge: [],
+          // Bei einer Serie: alle erkannten Klassen (z. B. Ricke auf Bild 1, Kitz auf Bild 2)
+          sexAge: [...new Set(g.flatMap((x) => x.sexAge))],
           behavior: '',
           direction: null,
           lat: pos.lat,
@@ -193,11 +197,21 @@ export function CameraImport({ onClose }: { onClose: () => void }) {
                     <>
                       <div className="mb-2 flex flex-wrap gap-2">
                         {species.map((s) => (
-                          <Chip key={s.id} active={it.speciesId === s.id} onClick={() => set(it.key, { speciesId: s.id })}>
+                          <Chip key={s.id} active={it.speciesId === s.id} onClick={() => set(it.key, { speciesId: s.id, sexAge: it.speciesId === s.id ? it.sexAge : [] })}>
                             {s.name}
                           </Chip>
                         ))}
                       </div>
+                      {it.speciesId && (
+                        <div className="mb-3">
+                          <ClassPicker
+                            key={it.speciesId}
+                            species={species.find((x) => x.id === it.speciesId)}
+                            value={it.sexAge}
+                            onChange={(sexAge) => set(it.key, { sexAge })}
+                          />
+                        </div>
+                      )}
                       <div className="flex items-center gap-3">
                         <span className="text-ink-dim">Anzahl</span>
                         <Stepper value={it.count} onChange={(count) => set(it.key, { count })} />
