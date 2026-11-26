@@ -18,6 +18,8 @@ erklären, nach jeder Phase genau sagen, wie man startet und testet. Antworten a
 - [x] Phase 3: Wildsichtungen, Wildkamera-Import (EXIF), Filter/Heatmap, Wildarten-Editor, Revierkarte aus Foto
 - [x] Phase 4: Kombinations-Assistent, Regelwerk, Statistik, ~40 Test-Ansitze
 - [ ] Phase 5: PWA/Offline, Kachel-Vorabspeicherung, JSON-Export/-Import, Jagdzeiten, Feinschliff
+  (Reihenfolge vom Nutzer am 26.11.2026: Teilschritt 8 vorerst übersprungen; 1 Offline-Karte ✓, 2 App startet ohne Netz,
+  3 Sicherung als Datei, 4 Backup-Erinnerung, 5 Feinschliff)
 
 ## Laufende Erweiterung „Tagebuch, Karte und KI-Jagdassistent“ (Branch `erweiterung-ki`)
 Vom Nutzer freigegebener Plan in 8 Teilschritten. Nach jedem Teilschritt: lauffähig, Commit, kurze Testanleitung,
@@ -274,7 +276,16 @@ Entscheidungen des Nutzers: KI-Modell **`claude-opus-5-5`** (als Einstellung än
   wird einmal aufs Revier gezoomt (`FitOnStart`), danach bleibt der zuletzt gesehene Ausschnitt. `zoomSnap 0.25`,
   damit das Einpassen nah genug ist. Ordner `sicherung/` (gitignored) für lokale GeoJSON-Sicherungen.
 - Demo-Sichtungen mit erfundenem Wetter (`source: 'demo'`, `src/demo/demoSightings.ts`, Zufall mit festem Startwert).
-- Offline-Kacheln (Phase 5): nur Esri/OSM/Topo, Google nie. OSM-Nutzungsregeln beachten (keine großen Downloads ab Zoom 17).
+- Offline-Kacheln (Phase 5, umgesetzt): Vorab-Speichern NUR bei Anbietern, deren Bedingungen das erlauben (`offlineCacheable` + `offline`
+  in `providers.ts`): **Luftbild Niedersachsen** (LGLN DOP20 per WMS `ni_dop20`, EPSG:3857, CC BY 4.0) und **basemap.de** (BKG Web Raster,
+  CC BY 4.0). **Nicht**: OSM (verbietet Offline/Vorab-Laden ausdrücklich), OpenTopoMap (bittet, Massendownloads zu vermeiden), Esri
+  (Bedingungen unklar), Google (nie). Speicher: eigene Dexie-DB `ansitzplaner-kacheln` (`src/map/tileStore.ts`, Tabellen `tiles`
+  Schlüssel `<anbieter>/<z>/<x>/<y>` + `packs`), nur dieses Gerät, nicht synchronisiert. Anzeige: `OfflineTileLayer`
+  (`src/map/offlineLayer.ts`) nimmt erst die gespeicherte Kachel (Blob-URL), sonst Internet. Rechnung `src/map/tileMath.ts`.
+  Bedienung `src/map/OfflineMapSection.tsx` („Mehr → Offline-Karte“, Link im Ebenen-Menü): Gebiet = `revierBounds` + 300 m,
+  Stufen 12 bis 16/17/18/19 (Übersicht/Normal/Genau/Sehr genau), max. 25 000 Kacheln, 4 parallele Anfragen, grob → fein,
+  Abbrechen/Fortsetzen (Vorhandenes wird übersprungen), anderes Gebiet/Stufe ersetzt die alte Karte. Vor dem Download
+  `navigator.storage.persist()`.
 
 ## Arbeitsweise: PC = Werkstatt, Handy = Endverbraucher
 - Gebaut wird immer auf einem **Arbeits-Branch**, nie direkt auf `main` committen. Jeder Push auf `main` geht sofort aufs Handy.

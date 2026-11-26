@@ -9,7 +9,7 @@ import { ownDataCounts, revierBounds } from '../db/ownData'
 import { setSetting, useSetting } from '../db/settings'
 import { clearDemoData, DEMO_CENTER, DEMO_ZOOM, loadDemoData } from '../demo/demoRevier'
 import { navigate } from '../lib/router'
-import { hasGoogleKey } from '../map/googleTiles'
+import { OfflineMapSection } from '../map/OfflineMapSection'
 import { CategoryList } from './CategoryList'
 import { TrashSection } from './TrashSection'
 import { SpeciesEditor } from './SpeciesEditor'
@@ -160,20 +160,14 @@ export default function SettingsPage() {
             {storage.persisted ? (
               <span className="text-good">ja</span>
             ) : (
-              <span className="text-hint">nein – App auf dem iPhone zum Home-Bildschirm hinzufügen (ab Phase 5)</span>
+              <span className="text-hint">nein – wird beim Speichern der Offline-Karte angefragt; auf dem iPhone hilft „Zum Home-Bildschirm“</span>
             )}
           </p>
         )}
         <p className="text-sm text-ink-dim">Export/Import als Backup kommt in Phase 5.</p>
       </section>
 
-      <section className="card mb-4">
-        <h2 className="mb-2 text-lg font-bold">Kartenebenen</h2>
-        <p className="text-ink-dim">
-          Google Satellit:{' '}
-          {hasGoogleKey() ? <span className="text-good">Schlüssel hinterlegt</span> : <span>kein Schlüssel (Ebene ausgeblendet)</span>}
-        </p>
-      </section>
+      <OfflineMapSection />
 
       <p className="pb-4 text-center text-sm text-ink-dim">
         Ansitzplaner · Version {__APP_VERSION__}

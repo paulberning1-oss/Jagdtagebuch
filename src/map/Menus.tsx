@@ -1,6 +1,6 @@
 import { ask } from '../components/ConfirmDialog'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, Eye, EyeOff, FileUp, Image, ListChecks, Maximize, Move, PenLine, Plus, Square, SquareCheck, Trash2 } from 'lucide-react'
+import { Check, CloudDownload, Eye, EyeOff, FileUp, Image, ListChecks, Maximize, Move, PenLine, Plus, Square, SquareCheck, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Sheet, useToast } from '../components/ui'
 import { db, type Boundary, type Facility, type MapOverlay } from '../db/db'
@@ -11,6 +11,8 @@ import { fromPos, polygonArea } from '../lib/geo'
 import { newId } from '../lib/id'
 import { readBoundaryFile } from '../lib/importBoundary'
 import { TILE_PROVIDERS } from './providers'
+import { tileDb } from './tileStore'
+import { navigate } from '../lib/router'
 
 // ---------- Kartenebenen ----------
 
@@ -26,6 +28,7 @@ export function LayerMenu({
   onAlign: (o: MapOverlay) => void
 }) {
   const overlays = useLiveQuery(() => db.overlays.toArray(), []) ?? []
+  const packs = useLiveQuery(() => tileDb.packs.toArray(), []) ?? []
   return (
     <Sheet title="Kartenebene" onClose={onClose}>
       <div className="grid gap-2">
@@ -43,12 +46,25 @@ export function LayerMenu({
                 <span className="block text-sm font-normal opacity-75">
                   {ok ? p.description : p.id === 'google' && navigator.onLine ? 'Kein API-Schlüssel hinterlegt' : 'Nur mit Internet'}
                 </span>
+                {packs.some((x) => x.provider === p.id) && (
+                  <span className={`mt-0.5 block text-sm font-semibold ${current === p.id ? "" : "text-good"}`}>✓ Revier offline gespeichert</span>
+                )}
               </span>
               {current === p.id && <Check />}
             </button>
           )
         })}
       </div>
+      <button
+        className="btn mt-2 w-full"
+        onClick={() => {
+          onClose()
+          navigate('mehr')
+          setTimeout(() => document.getElementById('offline-karte')?.scrollIntoView({ behavior: 'smooth' }), 300)
+        }}
+      >
+        <CloudDownload /> Karte offline speichern …
+      </button>
       {overlays.length > 0 && (
         <>
           <h3 className="mb-2 mt-5 text-sm font-semibold uppercase tracking-wide text-ink-dim">Eigene Revierkarten (Foto)</h3>
